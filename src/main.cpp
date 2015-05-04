@@ -1,10 +1,7 @@
 #include "filter.h"
-#include <iostream>
-#include <cstdlib>
-#include <vector>
-#include <cstdio>
-#include <algorithm>
 #include <cmath>
+#include <memory>
+#include <algorithm>
 #include <IL/il.h>
 #include <glog/logging.h>
 
@@ -70,25 +67,20 @@ int main(int argc, char const* argv[])
 	auto h = ilGetInteger(IL_IMAGE_HEIGHT);
 	LOG(INFO) << "Load image width = " << w << ", height = " << h;
 	ILubyte *color_img_ptr = ilGetData();
-	vector<ILubyte> color_img_edge(w*h*bpp);
+	unique_ptr<ILubyte[]> color_img_buffer(new ILubyte[w*h*bpp]);
 	IL_CHECK_ERROR();
 
 	int size = 5;
-	vector<double> kernel;
-	kernel.resize(size);
+	vector<double> kernel(size);
 
 	// kernel
 	createKernel(kernel);
 
-
 	// Gaussian filter
 	GaussianFilter gf;
-	gf.Run(color_img_ptr, color_img_edge.data(), kernel, w, h, bpp);
+	gf.Run(color_img_ptr, color_img_buffer.get(), kernel, w, h, bpp);
 
-	
-
-
-	copy(color_img_edge.begin(), color_img_edge.end(), color_img_ptr);
+	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
 
 	// store image
 	ilEnable(IL_FILE_OVERWRITE);
