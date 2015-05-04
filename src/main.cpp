@@ -50,6 +50,8 @@ int main(int argc, char const* argv[])
 {
 	google::InitGoogleLogging(argv[0]);
 	FLAGS_logtostderr = true;
+	CHECK_EQ(argc, 3) << "Usage: <executable> <input> <output>";
+
 	ilInit();
 
 	LOG(INFO) << "Using devil library version " << ilGetInteger(IL_VERSION_NUM);
@@ -61,7 +63,7 @@ int main(int argc, char const* argv[])
 	IL_CHECK_ERROR();
 
 	// Read image
-	ilLoadImage("lena_color.bmp");
+	ilLoadImage(argv[1]);
 	IL_CHECK_ERROR();
 	auto bpp = ilGetInteger(IL_IMAGE_BPP); // bpp = byte per pixels
 	auto w = ilGetInteger(IL_IMAGE_WIDTH);
@@ -90,7 +92,7 @@ int main(int argc, char const* argv[])
 
 	// store image
 	ilEnable(IL_FILE_OVERWRITE);
-	ilSaveImage("lena_gaussian.bmp");
+	ilSaveImage(argv[2]);
 	IL_CHECK_ERROR();
 
 	ilDeleteImages(1, &image);
