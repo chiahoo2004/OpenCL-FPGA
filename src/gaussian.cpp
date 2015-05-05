@@ -1,4 +1,4 @@
-#include "filter.h"
+#include "gaussianfilter.h"
 #include <cmath>
 #include <memory>
 #include <algorithm>

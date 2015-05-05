@@ -1,4 +1,4 @@
-#include "filter.h"
+#include "gaussianfilter.h"
 #include <algorithm>
 #include <glog/logging.h>
 using namespace std;
