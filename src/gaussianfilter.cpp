@@ -59,10 +59,12 @@ void GaussianFilter::Run(unsigned char *image_in, unsigned char* image_out,vecto
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = bpp*offset; x < line_stride-bpp*offset; ++x) {
 			
+//			LOG(INFO) << "image_in["<<y*line_stride+x<<"] = "<<(double)image_in[y*line_stride+x];
+
 			for (int k = 0; k < size; ++k) {
 				for (int i = 0; i < size; ++i) {
 					int j = -offset; 
-					mid[k] += kernel[i] * image_in[(y-offset+i)*line_stride+(x+bpp*(k-offset))];
+					mid[k] += kernel[i] * (double)image_in[(y-offset+i)*line_stride+(x+bpp*(k-offset))];
 //						LOG(INFO) << "mid["<<k<<"] += "<<"kernel["<<i<<"] ("<<kernel[i]<<") * image_in["<<(y-offset+i)*line_stride+(x+bpp*(k-offset))<<"] ("
 //							<<(double)image_in[(y-offset+i)*line_stride+(x+bpp*(k-offset))]<<" )"<<endl;
 				}

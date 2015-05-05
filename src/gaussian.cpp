@@ -33,11 +33,11 @@ void createKernel(vector<double>& kernel)
     	for(int x = -offset; x <= offset; ++x)
     	{
     		kernel[x+offset] = (exp(-(x*x)/s))/sqrt(M_PI * s);
-    		sum += kernel[x];
+    		sum += kernel[x+offset];
     	}
 
 	// normalize the Kernel
-	for(int x = 0; x < 5; ++x)
+	for(int x = 0; x < size; ++x)
 		kernel[x] /= sum;
  
 }

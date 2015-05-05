@@ -1,5 +1,5 @@
-b: clean bilateral
 g: clean gaussian
+b: clean bilateral
 
 bilateral:
 	g++ -std=c++11 -O3 -o bilateral bilateral.cpp bilateralfilter.cpp -lglog -lIL
