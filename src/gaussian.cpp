@@ -1,56 +1,17 @@
 #include "gaussianfilter.h"
-#include <cmath>
 #include <memory>
-#include <algorithm>
 #include <IL/il.h>
 #include <glog/logging.h>
-
 using namespace std;
-
-void createKernel(vector<double>& kernel)
-{
-    // set standard deviation to 1.0
-    double sigma = 1.0;
-    double x, s = 2.0 * sigma * sigma;
- 
-    // sum is for normalization
-    double sum = 0.0;
-
-    int size = kernel.size();
-    int offset = (size-1)/2;
- 
-/*    // generate nxn kernel
-    for (int x = -2; x <= 2; x++)
-    {
-	for(int y = -2; y <= 2; y++)
-	{
-		r = sqrt(x*x + y*y);
-		kernel[x + 2][y + 2] = (exp(-(r*r)/s))/(M_PI * s);
-		sum += gKernel[x + 2][y + 2];
-	}
-    }
-*/ 
-    	for(int x = -offset; x <= offset; ++x)
-    	{
-    		kernel[x+offset] = (exp(-(x*x)/s))/sqrt(M_PI * s);
-    		sum += kernel[x+offset];
-    	}
-
-	// normalize the Kernel
-	for(int x = 0; x < size; ++x)
-		kernel[x] /= sum;
- 
-}
 
 #define IL_CHECK_ERROR() {auto e = ilGetError();CHECK_EQ(e, IL_NO_ERROR)<<e;}
 int main(int argc, char const* argv[])
 {
+	// Initialize Glog and libIL
 	google::InitGoogleLogging(argv[0]);
 	FLAGS_logtostderr = true;
 	CHECK_EQ(argc, 3) << "Usage: <executable> <input> <output>";
-
 	ilInit();
-
 	LOG(INFO) << "Using devil library version " << ilGetInteger(IL_VERSION_NUM);
 
 	// Allocate images
@@ -70,19 +31,12 @@ int main(int argc, char const* argv[])
 	unique_ptr<ILubyte[]> color_img_buffer(new ILubyte[w*h*bpp]);
 	IL_CHECK_ERROR();
 
-	int size = 5;
-	vector<double> kernel(size);
-
-	// kernel
-	createKernel(kernel);
-
 	// Gaussian filter
 	GaussianFilter gf;
-	gf.Run(color_img_ptr, color_img_buffer.get(), kernel, w, h, bpp);
-
-	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
+	gf.Run(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
 
 	// store image
+	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[2]);
 	IL_CHECK_ERROR();
