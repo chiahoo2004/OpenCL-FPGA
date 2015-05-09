@@ -2,7 +2,26 @@
 #include "utilities.h"
 #include <glog/logging.h>
 #include <cmath>
+#include <memory>
 using namespace std;
+
+template<class Float = float> unique_ptr<Float[]> CreateGaussianKernel(Float sigma, int radius)
+{
+	int length = radius*2+1;
+	unique_ptr<Float[]> table(new Float[length]);
+	const Float denominator_inverse = -1.0f / (2.0f * sigma * sigma);
+	Float sum = 0;
+	for (int i = 0; i < length; ++i) {
+		int diff = i-radius;
+		table[i] = exp(diff*diff*denominator_inverse);
+		sum += table[i];
+	}
+	sum = 1 / sum;
+	for (int i = 0; i < length; ++i) {
+		table[i] *= sum;
+	}
+	return table;
+}
 
 void GaussianFilter::Run(
 	unsigned char *image_in, unsigned char* image_out,
