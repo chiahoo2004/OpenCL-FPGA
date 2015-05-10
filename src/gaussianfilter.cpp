@@ -1,5 +1,6 @@
 #include "gaussianfilter.h"
 #include "utilities.h"
+#include <IL/il.h>
 #include <glog/logging.h>
 #include <cmath>
 #include <memory>
@@ -21,6 +22,22 @@ template<class Float = float> unique_ptr<Float[]> CreateGaussianKernel(Float sig
 		table[i] *= sum;
 	}
 	return table;
+}
+
+void GaussianFilter::Edge(unsigned char *image_in, unsigned char* image_out, float sigma, int radius, int w, int h, int bpp)
+{
+	unique_ptr<ILubyte[]> color_img_g1(new ILubyte[w*h*bpp]);
+	unique_ptr<ILubyte[]> color_img_g2(new ILubyte[w*h*bpp]);
+ 	Run(image_in, color_img_g1.get(), sigma, radius, w, h, bpp);
+ 	Run(color_img_g1.get(), color_img_g2.get(), sigma, radius, w, h, bpp);
+ 	unique_ptr<ILubyte[]> color_img_diff1(new ILubyte[w*h*bpp]);
+ 	unique_ptr<ILubyte[]> color_img_diff2(new ILubyte[w*h*bpp]);
+ 	for (int i = 0; i < w*h*bpp; ++i)
+ 	{
+ 		color_img_diff1[i] = image_in[i] - color_img_g1[i];
+ 		color_img_diff2[i] = color_img_g1[i] - color_img_g2[i];
+		image_out[i] = 10*(color_img_diff1[i]) + 5*(color_img_diff2[i]); 
+ 	}
 }
 
 void GaussianFilter::Run(

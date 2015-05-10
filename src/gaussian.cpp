@@ -10,7 +10,7 @@ int main(int argc, char const* argv[])
 	// Initialize Glog and libIL
 	google::InitGoogleLogging(argv[0]);
 	FLAGS_logtostderr = true;
-	CHECK_EQ(argc, 3) << "Usage: <executable> <input> <output>";
+	CHECK_EQ(argc, 4) << "Usage: <executable> <input> <output> <output>";
 	ilInit();
 	LOG(INFO) << "Using devil library version " << ilGetInteger(IL_VERSION_NUM);
 
@@ -39,6 +39,12 @@ int main(int argc, char const* argv[])
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[2]);
+	IL_CHECK_ERROR();
+
+	gf.Edge(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
+	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
+	ilEnable(IL_FILE_OVERWRITE);
+	ilSaveImage(argv[3]);
 	IL_CHECK_ERROR();
 
 	ilDeleteImages(1, &image);

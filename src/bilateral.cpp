@@ -1,7 +1,5 @@
 #include "bilateralfilter.h"
-#include <cmath>
 #include <memory>
-#include <algorithm>
 #include <IL/il.h>
 #include <glog/logging.h>
 
@@ -14,7 +12,7 @@ int main(int argc, char const* argv[])
 {
 	google::InitGoogleLogging(argv[0]);
 	FLAGS_logtostderr = true;
-    CHECK_EQ(argc, 3) << "Usage: <executable> <input> <output>";
+    CHECK_EQ(argc, 4) << "Usage: <executable> <input> <output> <output>";
     
 	ilInit();
 
@@ -53,6 +51,12 @@ int main(int argc, char const* argv[])
 	// store image
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[2]);
+	IL_CHECK_ERROR();
+
+	bf.Edge(color_img_ptr, color_img_buffer.get(), kernel, w, h, bpp);
+	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
+	ilEnable(IL_FILE_OVERWRITE);
+	ilSaveImage(argv[3]);
 	IL_CHECK_ERROR();
 
 	ilDeleteImages(1, &image);

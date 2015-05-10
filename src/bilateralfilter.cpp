@@ -1,7 +1,12 @@
 #include "bilateralfilter.h"
 #include "utilities.h"
+#include <IL/il.h>
 #include <glog/logging.h>
+#include <cmath>
+#include <memory>
 using namespace std;
+
+#define NDEBUG 1
 
 void BilateralFilter::createKernel(unsigned char *image_in, vector<vector<double> >& kernel, int a, int b, int w, int h, int bpp)
 {
@@ -43,6 +48,22 @@ void BilateralFilter::createKernel(unsigned char *image_in, vector<vector<double
 #endif
 }
 
+void BilateralFilter::Edge(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, int w, int h, int bpp)
+{
+	unique_ptr<ILubyte[]> color_img_g1(new ILubyte[w*h*bpp]);
+	unique_ptr<ILubyte[]> color_img_g2(new ILubyte[w*h*bpp]);
+ 	Run(image_in, color_img_g1.get(), kernel, w, h, bpp);
+ 	Run(color_img_g1.get(), color_img_g2.get(), kernel, w, h, bpp);
+ 	unique_ptr<ILubyte[]> color_img_diff1(new ILubyte[w*h*bpp]);
+ 	unique_ptr<ILubyte[]> color_img_diff2(new ILubyte[w*h*bpp]);
+ 	for (int i = 0; i < w*h*bpp; ++i)
+ 	{
+ 		color_img_diff1[i] = image_in[i] - color_img_g1[i];
+ 		color_img_diff2[i] = color_img_g1[i] - color_img_g2[i];
+		image_out[i] = 10*(color_img_diff1[i]) + 5*(color_img_diff2[i]); 
+ 	}
+}
+
 void BilateralFilter::Run(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, int w, int h, int bpp)
 {
 	CHECK_NE(w, 0) << "Width might not be 0";
@@ -56,16 +77,20 @@ void BilateralFilter::Run(unsigned char *image_in, unsigned char* image_out, vec
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = bpp*offset; x < line_stride-bpp*offset; ++x) {
 			int image=0;
-            DLOG(INFO)<<"image_in["<<y*line_stride+x<<"] = "<< (double) image_in[y*line_stride+x] <<endl;
-            createKernel(image_in, kernel, x, y, w, h, bpp);
 #ifndef NDEBUG
+            DLOG(INFO)<<"image_in["<<y*line_stride+x<<"] = "<< (double) image_in[y*line_stride+x] <<endl;
+#endif
+            createKernel(image_in, kernel, x, y, w, h, bpp);
+
             for (int a = -offset; a <= offset; a++) {
                 for(int b = -offset; b <= offset; b++) {
                     image +=  kernel[a+offset][b+offset]   *  image_in[(y+a)*line_stride+(x+b*bpp)];
+#ifndef NDEBUG
                     LOG(INFO)<<"kernel["<<a+offset<<"]["<<b+offset<<"]   *   image_in["<<(y+a)*line_stride+(x+b*bpp)<<"]"<<endl;
+#endif
                 }
             }
-#endif
+
             image_out[y*line_stride+x] = ClampToUint8(abs(image)*1);
 #ifndef NDEBUG
             DLOG(INFO)<<"image_out["<<y*line_stride+x<<"] = "<< ClampToUint8(abs(image)*1)<<endl;
