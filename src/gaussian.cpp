@@ -1,4 +1,5 @@
 #include "gaussianfilter.h"
+#include "enhancement.h"
 #include <memory>
 #include <IL/il.h>
 #include <glog/logging.h>
@@ -29,7 +30,8 @@ int main(int argc, char const* argv[])
 	LOG(INFO) << "Load image width = " << w << ", height = " << h;
 	ILubyte *color_img_ptr = ilGetData();
 	unique_ptr<ILubyte[]> color_img_buffer(new ILubyte[w*h*bpp]);
-	unique_ptr<ILubyte[]> original(new ILubyte[w*h*bpp]);
+	unique_ptr<ILubyte[]> color_img_buffer2(new ILubyte[w*h*bpp]);
+	unique_ptr<ILubyte[]> out(new ILubyte[w*h*bpp]);
 	IL_CHECK_ERROR();
 
 	// Gaussian filter
@@ -37,14 +39,34 @@ int main(int argc, char const* argv[])
 	gf.Run(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
 
 	// store image
-	copy(color_img_ptr, color_img_ptr+w*h*bpp, original.get());
+  	int layer = 3;
+	ILubyte** images_clear_to_blur = new ILubyte*[layer];
+	for(int i = 0; i < layer ; ++i){
+		images_clear_to_blur[i] = new ILubyte[w*h*bpp];
+	}
+	copy(color_img_ptr, color_img_ptr+w*h*bpp, *images_clear_to_blur);
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
+
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[2]);
 	IL_CHECK_ERROR();
 
-	gf.Edge(original.get(), color_img_buffer.get(), 3.0f, 9, w, h, bpp);
-	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
+  	unique_ptr<float[]> weights(new float[layer]);
+  	*(weights.get()) = 1;
+  	*(weights.get()+1) = 2;
+  	*(weights.get()+2) = 1;
+  	gf.Run(color_img_buffer.get(), color_img_buffer2.get(), 3.0f, 9, w, h, bpp);
+
+	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, *(images_clear_to_blur+1));
+	copy(color_img_buffer2.get(), color_img_buffer2.get()+w*h*bpp, *(images_clear_to_blur+2));
+	Enhance((unsigned char**)images_clear_to_blur, out.get(), weights.get(), w, h, bpp, layer);
+	copy(out.get(), out.get()+w*h*bpp, color_img_ptr);
+
+	for(int i = 0; i < layer ; ++i){
+		delete [] images_clear_to_blur[i];
+	}
+	delete [] images_clear_to_blur;
+
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[3]);
 	IL_CHECK_ERROR();

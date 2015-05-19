@@ -34,10 +34,9 @@ void GaussianFilter::Edge(unsigned char *image_in, unsigned char* image_out, flo
  	unique_ptr<float[]> color_img_diff2(new float[w*h*bpp]);
  	for (int i = 0; i < w*h*bpp; ++i)
  	{
- 		color_img_diff1[i] = (float)image_in[i] - (float)color_img_g1[i];
- 		color_img_diff2[i] = (float)color_img_g1[i] - (float)color_img_g2[i];
-		float temp = 2*(color_img_diff1[i]) + 1*(color_img_diff2[i]) + image_in[i];
-		image_out[i] = ClampToUint8((int)temp);
+ 		color_img_diff1[i] = image_in[i] - color_img_g1[i];
+ 		color_img_diff2[i] = color_img_g1[i] - color_img_g2[i];
+		image_out[i] = 10*(color_img_diff1[i]) + 5*(color_img_diff2[i]); 
  	}
 }
 
