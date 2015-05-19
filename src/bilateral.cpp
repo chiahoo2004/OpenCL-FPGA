@@ -1,4 +1,5 @@
 #include "bilateralfilter.h"
+#include "enhancement.h"
 #include <iostream>
 #include <memory>
 #include <IL/il.h>
@@ -34,6 +35,8 @@ int main(int argc, char const* argv[])
 	LOG(INFO) << "Load image width = " << w << ", height = " << h;
 	ILubyte *color_img_ptr = ilGetData();
 	unique_ptr<ILubyte[]> color_img_buffer(new ILubyte[w*h*bpp]);
+	unique_ptr<ILubyte[]> color_img_buffer2(new ILubyte[w*h*bpp]);
+	unique_ptr<ILubyte[]> out(new ILubyte[w*h*bpp]);
 	IL_CHECK_ERROR();
 
 	int size;
@@ -53,15 +56,35 @@ int main(int argc, char const* argv[])
 	BilateralFilter bf;
 	bf.Run(color_img_ptr, color_img_buffer.get(), kernel, sigma_s, sigma_r, w, h, bpp);
 
+	// store image
+	int layer = 3;
+	ILubyte** images_clear_to_blur = new ILubyte*[layer];
+	for(int i = 0; i < layer ; ++i){
+		images_clear_to_blur[i] = new ILubyte[w*h*bpp];
+	}
+	copy(color_img_ptr, color_img_ptr+w*h*bpp, *images_clear_to_blur);
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
 
-	// store image
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[2]);
 	IL_CHECK_ERROR();
 
-	bf.Edge(color_img_ptr, color_img_buffer.get(), kernel, sigma_s, sigma_r, w, h, bpp);
-	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
+	unique_ptr<float[]> weights(new float[layer]);
+  	*(weights.get()) = 1;
+  	cout<<"weights <original-first smooth> <first smooth-second smooth> : ";
+  	cin>>*(weights.get()+1)>>*(weights.get()+2);
+  	bf.Run(color_img_buffer.get(), color_img_buffer2.get(), kernel, sigma_s, sigma_r, w, h, bpp);
+
+	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, *(images_clear_to_blur+1));
+	copy(color_img_buffer2.get(), color_img_buffer2.get()+w*h*bpp, *(images_clear_to_blur+2));
+	Enhance((unsigned char**)images_clear_to_blur, out.get(), weights.get(), w, h, bpp, layer);
+	copy(out.get(), out.get()+w*h*bpp, color_img_ptr);
+
+	for(int i = 0; i < layer ; ++i){
+		delete [] images_clear_to_blur[i];
+	}
+	delete [] images_clear_to_blur;
+
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[3]);
 	IL_CHECK_ERROR();
