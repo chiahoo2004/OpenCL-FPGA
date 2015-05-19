@@ -30,13 +30,14 @@ void GaussianFilter::Edge(unsigned char *image_in, unsigned char* image_out, flo
 	unique_ptr<ILubyte[]> color_img_g2(new ILubyte[w*h*bpp]);
  	Run(image_in, color_img_g1.get(), sigma, radius, w, h, bpp);
  	Run(color_img_g1.get(), color_img_g2.get(), sigma, radius, w, h, bpp);
- 	unique_ptr<ILubyte[]> color_img_diff1(new ILubyte[w*h*bpp]);
- 	unique_ptr<ILubyte[]> color_img_diff2(new ILubyte[w*h*bpp]);
+ 	unique_ptr<float[]> color_img_diff1(new float[w*h*bpp]);
+ 	unique_ptr<float[]> color_img_diff2(new float[w*h*bpp]);
  	for (int i = 0; i < w*h*bpp; ++i)
  	{
- 		color_img_diff1[i] = image_in[i] - color_img_g1[i];
- 		color_img_diff2[i] = color_img_g1[i] - color_img_g2[i];
-		image_out[i] = 10*(color_img_diff1[i]) + 5*(color_img_diff2[i]); 
+ 		color_img_diff1[i] = (float)image_in[i] - (float)color_img_g1[i];
+ 		color_img_diff2[i] = (float)color_img_g1[i] - (float)color_img_g2[i];
+		float temp = 2*(color_img_diff1[i]) + 1*(color_img_diff2[i]) + image_in[i];
+		image_out[i] = ClampToUint8((int)temp);
  	}
 }
 

@@ -29,6 +29,7 @@ int main(int argc, char const* argv[])
 	LOG(INFO) << "Load image width = " << w << ", height = " << h;
 	ILubyte *color_img_ptr = ilGetData();
 	unique_ptr<ILubyte[]> color_img_buffer(new ILubyte[w*h*bpp]);
+	unique_ptr<ILubyte[]> original(new ILubyte[w*h*bpp]);
 	IL_CHECK_ERROR();
 
 	// Gaussian filter
@@ -36,12 +37,13 @@ int main(int argc, char const* argv[])
 	gf.Run(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
 
 	// store image
+	copy(color_img_ptr, color_img_ptr+w*h*bpp, original.get());
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[2]);
 	IL_CHECK_ERROR();
 
-	gf.Edge(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
+	gf.Edge(original.get(), color_img_buffer.get(), 3.0f, 9, w, h, bpp);
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[3]);
