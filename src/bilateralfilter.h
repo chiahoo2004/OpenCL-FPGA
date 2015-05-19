@@ -3,7 +3,7 @@
 using std::vector;
 
 struct BilateralFilter {
-	void createKernel(unsigned char *image_in, vector<vector<double> >& kernel, int a, int b, int w, int h, int bpp);
-	void Edge(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, int w, int h, int bpp);
-	void Run(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, int w, int h, int bpp);
+	void createKernel(unsigned char *image_in, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int a, int b, int w, int h, int bpp);
+	void Edge(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int w, int h, int bpp);
+	void Run(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int w, int h, int bpp);
 };

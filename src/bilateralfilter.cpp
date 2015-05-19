@@ -1,5 +1,6 @@
 #include "bilateralfilter.h"
 #include "utilities.h"
+#include <iostream>
 #include <IL/il.h>
 #include <glog/logging.h>
 #include <cmath>
@@ -8,12 +9,10 @@ using namespace std;
 
 #define NDEBUG 1
 
-void BilateralFilter::createKernel(unsigned char *image_in, vector<vector<double> >& kernel, int a, int b, int w, int h, int bpp)
+void BilateralFilter::createKernel(unsigned char *image_in, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int a, int b, int w, int h, int bpp)
 {
 	const int line_stride = bpp*w;
 	// set standard deviation to 1.0
-	double sigma_s = 10.0;
-	double sigma_r = 20.0;
 	double s = 2.0 * sigma_s * sigma_s;
 	double r = 2.0 * sigma_r * sigma_r;
 
@@ -48,12 +47,12 @@ void BilateralFilter::createKernel(unsigned char *image_in, vector<vector<double
 #endif
 }
 
-void BilateralFilter::Edge(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, int w, int h, int bpp)
+void BilateralFilter::Edge(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int w, int h, int bpp)
 {
 	unique_ptr<ILubyte[]> color_img_g1(new ILubyte[w*h*bpp]);
 	unique_ptr<ILubyte[]> color_img_g2(new ILubyte[w*h*bpp]);
- 	Run(image_in, color_img_g1.get(), kernel, w, h, bpp);
- 	Run(color_img_g1.get(), color_img_g2.get(), kernel, w, h, bpp);
+ 	Run(image_in, color_img_g1.get(), kernel, sigma_s, sigma_r, w, h, bpp);
+ 	Run(color_img_g1.get(), color_img_g2.get(), kernel, sigma_s, sigma_r, w, h, bpp);
  	unique_ptr<ILubyte[]> color_img_diff1(new ILubyte[w*h*bpp]);
  	unique_ptr<ILubyte[]> color_img_diff2(new ILubyte[w*h*bpp]);
  	for (int i = 0; i < w*h*bpp; ++i)
@@ -64,7 +63,7 @@ void BilateralFilter::Edge(unsigned char *image_in, unsigned char* image_out, ve
  	}
 }
 
-void BilateralFilter::Run(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, int w, int h, int bpp)
+void BilateralFilter::Run(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int w, int h, int bpp)
 {
 	CHECK_NE(w, 0) << "Width might not be 0";
 	CHECK_NE(h, 0) << "Height might not be 0";
@@ -80,7 +79,7 @@ void BilateralFilter::Run(unsigned char *image_in, unsigned char* image_out, vec
 #ifndef NDEBUG
             DLOG(INFO)<<"image_in["<<y*line_stride+x<<"] = "<< (double) image_in[y*line_stride+x] <<endl;
 #endif
-            createKernel(image_in, kernel, x, y, w, h, bpp);
+            createKernel(image_in, kernel, sigma_s, sigma_r, x, y, w, h, bpp);
 
             for (int a = -offset; a <= offset; a++) {
                 for(int b = -offset; b <= offset; b++) {

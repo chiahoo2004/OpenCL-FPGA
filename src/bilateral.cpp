@@ -1,4 +1,5 @@
 #include "bilateralfilter.h"
+#include <iostream>
 #include <memory>
 #include <IL/il.h>
 #include <glog/logging.h>
@@ -35,16 +36,22 @@ int main(int argc, char const* argv[])
 	unique_ptr<ILubyte[]> color_img_buffer(new ILubyte[w*h*bpp]);
 	IL_CHECK_ERROR();
 
-	int size = 5;
+	int size;
+	cout<<"<kernel size> : ";
+	cin>>size;
 	vector<vector<double> > kernel;
 	kernel.resize(size);
 	for(int i=0; i<size; ++i) 
 		kernel[i].resize(size);
+	double sigma_s;
+	double sigma_r;
+	cout<<"<sigma_s> <sigma_r> : ";
+	cin>>sigma_s>>sigma_r;
 
 
 	// Bilateral filter
 	BilateralFilter bf;
-	bf.Run(color_img_ptr, color_img_buffer.get(), kernel, w, h, bpp);
+	bf.Run(color_img_ptr, color_img_buffer.get(), kernel, sigma_s, sigma_r, w, h, bpp);
 
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
 
@@ -53,7 +60,7 @@ int main(int argc, char const* argv[])
 	ilSaveImage(argv[2]);
 	IL_CHECK_ERROR();
 
-	bf.Edge(color_img_ptr, color_img_buffer.get(), kernel, w, h, bpp);
+	bf.Edge(color_img_ptr, color_img_buffer.get(), kernel, sigma_s, sigma_r, w, h, bpp);
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[3]);

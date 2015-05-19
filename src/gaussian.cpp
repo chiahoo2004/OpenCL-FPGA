@@ -1,5 +1,6 @@
 #include "gaussianfilter.h"
 #include "enhancement.h"
+#include <iostream>
 #include <memory>
 #include <IL/il.h>
 #include <glog/logging.h>
@@ -35,15 +36,20 @@ int main(int argc, char const* argv[])
 	unique_ptr<ILubyte[]> out(new ILubyte[w*h*bpp]);
 	IL_CHECK_ERROR();
 
+	float sigma;
+	int radius;
+	cout<<"<sigma> <radius> : ";
+	cin>>sigma>>radius;
+
 	// Gaussian filter
 	GaussianFilter gf;
 	clock_t start, stop;
 	start = clock();
-	gf.Run(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
+	gf.Run(color_img_ptr, color_img_buffer.get(), sigma, radius, w, h, bpp);
 	stop = clock();
 	LOG(INFO)<<"original time : "<<double(stop - start) / CLOCKS_PER_SEC<<" s"<<endl;
 	start = clock();
-	gf.RunImproved(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
+	gf.RunImproved(color_img_ptr, color_img_buffer.get(), sigma, radius, w, h, bpp);
 	stop = clock();
 	LOG(INFO)<<"improved time : "<<double(stop - start) / CLOCKS_PER_SEC<<" s"<<endl;
 
@@ -62,9 +68,9 @@ int main(int argc, char const* argv[])
 
   	unique_ptr<float[]> weights(new float[layer]);
   	*(weights.get()) = 1;
-  	*(weights.get()+1) = 2;
-  	*(weights.get()+2) = 1;
-  	gf.Run(color_img_buffer.get(), color_img_buffer2.get(), 3.0f, 9, w, h, bpp);
+  	cout<<"weights <original-first smooth> <first smooth-second smooth> : ";
+  	cin>>*(weights.get()+1)>>*(weights.get()+2);
+  	gf.Run(color_img_buffer.get(), color_img_buffer2.get(), sigma, radius, w, h, bpp);
 
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, *(images_clear_to_blur+1));
 	copy(color_img_buffer2.get(), color_img_buffer2.get()+w*h*bpp, *(images_clear_to_blur+2));

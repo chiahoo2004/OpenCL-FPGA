@@ -7,5 +7,5 @@ struct GuidedFilter {
 	void Run(
 		unsigned char *image_in, unsigned char* image_out, unsigned char* I,
 		vector<vector<vector<double> > >& a, vector<vector<vector<double> > >& b, 
-		int windowSize, int w, int h, int bpp);
+		int windowSize, double epsilon, int w, int h, int bpp);
 };

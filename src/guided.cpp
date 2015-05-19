@@ -1,4 +1,5 @@
 #include "guidedfilter.h"
+#include <iostream>
 #include <memory>
 #include <IL/il.h>
 #include <glog/logging.h>
@@ -31,7 +32,9 @@ int main(int argc, char const* argv[])
 	unique_ptr<ILubyte[]> color_img_buffer(new ILubyte[w*h*bpp]);
 	IL_CHECK_ERROR();
 
-	int windowSize = 3;
+	int windowSize, epsilon;
+	cout<<"<window size> <epsilon> : ";
+	cin>>windowSize>>epsilon;
 	vector<vector<vector<double> > > a, b;
 	a.resize(w);
 	b.resize(w);
@@ -46,7 +49,7 @@ int main(int argc, char const* argv[])
 
 	// Guided filter
 	GuidedFilter gf;
-	gf.Run(color_img_ptr, color_img_buffer.get(), color_img_ptr, a, b, windowSize, w, h, bpp);
+	gf.Run(color_img_ptr, color_img_buffer.get(), color_img_ptr, a, b, windowSize, epsilon, w, h, bpp);
 
 	// store image
 	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);

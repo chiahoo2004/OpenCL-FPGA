@@ -8,7 +8,7 @@ using namespace std;
 //#define DEBUG1 1  
 //#define DEBUG2 1  
 
-void GuidedFilter::Run(unsigned char *image_in, unsigned char* image_out, unsigned char* I, vector<vector<vector<double> > >& a, vector<vector<vector<double> > >& b, int windowSize, int w, int h, int bpp)
+void GuidedFilter::Run(unsigned char *image_in, unsigned char* image_out, unsigned char* I, vector<vector<vector<double> > >& a, vector<vector<vector<double> > >& b, int windowSize, double epsilon, int w, int h, int bpp)
 {
 	int size = windowSize * windowSize;
 	int offset = (windowSize-1)/2;
@@ -22,7 +22,6 @@ void GuidedFilter::Run(unsigned char *image_in, unsigned char* image_out, unsign
 			double sum_in = 0;
 			double sum = 0;
 			
-			double epsilon = 1000;
 			double mean_g, squaremean_g, mean_in, variance_g, a_temp, b_temp;
 
 			for (int a = -offset; a <= offset; a++) {
