@@ -8,5 +8,8 @@ struct GaussianFilter {
 	void Run(
 		unsigned char *image_in, unsigned char* image_out,
 		float sigma, int radius, int w, int h, int bpp);
+	void RunImproved(
+		unsigned char *image_in, unsigned char* image_out,
+		float sigma, int radius, int w, int h, int bpp);
 };
 

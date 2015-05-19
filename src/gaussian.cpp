@@ -3,6 +3,7 @@
 #include <memory>
 #include <IL/il.h>
 #include <glog/logging.h>
+#include <ctime>
 using namespace std;
 
 #define IL_CHECK_ERROR() {auto e = ilGetError();CHECK_EQ(e, IL_NO_ERROR)<<e;}
@@ -36,7 +37,15 @@ int main(int argc, char const* argv[])
 
 	// Gaussian filter
 	GaussianFilter gf;
+	clock_t start, stop;
+	start = clock();
 	gf.Run(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
+	stop = clock();
+	LOG(INFO)<<"original time : "<<double(stop - start) / CLOCKS_PER_SEC<<" s"<<endl;
+	start = clock();
+	gf.RunImproved(color_img_ptr, color_img_buffer.get(), 3.0f, 9, w, h, bpp);
+	stop = clock();
+	LOG(INFO)<<"improved time : "<<double(stop - start) / CLOCKS_PER_SEC<<" s"<<endl;
 
 	// store image
   	int layer = 3;

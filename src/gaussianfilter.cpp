@@ -64,3 +64,48 @@ void GaussianFilter::Run(
 		}
 	}
 }
+
+void GaussianFilter::RunImproved(
+	unsigned char *image_in, unsigned char* image_out,
+	float sigma, int radius, int w, int h, int bpp)
+{
+	CHECK_NE(w, 0) << "Width might not be 0";
+	CHECK_NE(h, 0) << "Height might not be 0";
+
+	auto kernel = CreateGaussianKernel(sigma, radius+1);
+	int buf_size = radius*2+1;
+//	unique_ptr<float[]> mid(new float[buf_size]());
+	vector<vector<vector<float> > > mid;
+	mid.resize(h);
+	for(int i=0; i<h; ++i) {
+		mid[i].resize(w);
+		for (int j = 0; j < w; ++j)
+		{
+			mid[i][j].resize(bpp);
+		}
+	}
+	const int line_stride = bpp*w;
+	for (int y = radius; y < h-radius; ++y) {
+		for (int a = 0; a < bpp; ++a){
+			for (int b = 0; b < 2*radius+1; ++b){
+				for (int c = -radius; c < radius; ++c){
+					mid[y][b][a] += kernel[c+radius] * image_in[(y+c)*line_stride+(a+bpp*b)];;
+				}
+			}
+		}
+		for (int x = bpp*(radius+1); x < line_stride-bpp*radius; ++x) {
+			for (int c = -radius; c <= radius; ++c) {
+//					mid[k+radius] += kernel[i+radius] * image_in[(y+i)*line_stride+(x+bpp*k)];
+				mid[y][ (x/bpp)+radius ][ x%bpp ] += kernel[c+radius] * image_in[(y+c)*line_stride+(x%bpp+bpp*(x/bpp+radius))];
+			}
+			
+//			int pixel_output = (int)inner_product(mid.get(), mid.get()+buf_size, kernel.get(), 0.0f);
+			int pixel_output = 0;
+			for (int c = -radius; c < radius; ++c)
+			{
+				pixel_output += kernel[c+radius] * mid[y][ (x/bpp)+c ][ x%bpp ];
+			}
+			image_out[y*line_stride+x] = ClampToUint8(pixel_output);
+		}
+	}
+}
