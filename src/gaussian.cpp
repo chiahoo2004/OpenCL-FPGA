@@ -1,4 +1,5 @@
 #include "gaussianfilter.h"
+#include "bilateralfilter.h"
 #include "enhancement.h"
 #include "utilities.h"
 #include "timer.h"
@@ -8,6 +9,9 @@
 #include <IL/il.h>
 #include <glog/logging.h>
 using namespace std;
+enum FilterMethod {
+	Gaussian, Bilateral, Guided
+};
 
 #define IL_CHECK_ERROR() {auto e = ilGetError();CHECK_EQ(e, IL_NO_ERROR)<<e;}
 int main(int argc, char const* argv[])
@@ -39,20 +43,24 @@ int main(int argc, char const* argv[])
 	IL_CHECK_ERROR();
 	copy(color_img_ptr, color_img_ptr+image_size, original_float.get());
 
-	float sigma;
-	int radius;
-	cout<<"<sigma> <radius> : ";
-	cin>>sigma>>radius;
-
-	// Filter
+	// Filter, fix it at compile time now
 	Filter *filter;
-
-	// Gaussian
-	GaussianFilter gf;
-	gf.SetParameter({sigma, radius});
-
-	filter = dynamic_cast<Filter*>(&gf);
-	filter->SetDimension(w, h, bpp);
+	FilterMethod filter_method = FilterMethod::Bilateral;
+	switch (filter_method) {
+		case FilterMethod::Gaussian: {
+			GaussianFilter *gf = new GaussianFilter;
+			gf->SetParameter({10.0f, 30});
+			filter = dynamic_cast<Filter*>(gf);
+			break;
+		}
+		case FilterMethod::Bilateral: {
+			BilateralFilter *bf = new BilateralFilter;
+			bf->SetParameter({5.0f, 30.0f, 15});
+			filter = dynamic_cast<Filter*>(bf);
+			break;
+		}
+	}
+	filter->SetDimension(w, h, bpp); // move to Enhance?
 
 	// Enhance
 	Clock tic, toc;

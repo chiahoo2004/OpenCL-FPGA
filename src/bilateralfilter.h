@@ -1,9 +1,16 @@
 #pragma once
-#include <vector>
-using std::vector;
+#include "filter.h"
 
-struct BilateralFilter {
-	void createKernel(unsigned char *image_in, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int a, int b, int w, int h, int bpp);
-	void Edge(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int w, int h, int bpp);
-	void Run(unsigned char *image_in, unsigned char* image_out, vector<vector<double> >& kernel, double sigma_s, double sigma_r, int w, int h, int bpp);
+struct BilateralFilter: public Filter {
+	struct Parameter {
+		float spacial_sigma, color_sigma;
+		int radius;
+	};
+	virtual void Run(const float *image_in, float *image_out);
+	virtual void SetDimension(const int w, const int h, const int channel);
+	void SetParameter(const Parameter &param) {
+		param_ = param;
+	}
+private:
+	Parameter param_;
 };
