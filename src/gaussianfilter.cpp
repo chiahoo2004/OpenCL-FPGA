@@ -37,7 +37,7 @@ void GaussianFilter::Run(const float *image_in, float* image_out)
 	CHECK_NE(w, 0) << "Width might not be 0";
 	CHECK_NE(h, 0) << "Height might not be 0";
 
-	auto kernel = CreateGaussianKernel(param_.r_sigma, radius);
+	auto kernel = CreateGaussianKernel(param_.spacial_sigma, radius);
 	int buf_size = radius*2+1;
 	vector<vector<vector<float>>> mid;
 	mid.resize(h);

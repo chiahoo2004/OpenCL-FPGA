@@ -3,7 +3,7 @@
 
 struct GaussianFilter: public Filter {
 	struct Parameter {
-		float r_sigma;
+		float spacial_sigma;
 		int radius;
 	};
 	virtual void Run(const float *image_in, float* image_out);
