@@ -3,6 +3,7 @@
 #include "utilities.h"
 #include "timer.h"
 #include <iostream>
+#include <algorithm>
 #include <memory>
 #include <IL/il.h>
 #include <glog/logging.h>

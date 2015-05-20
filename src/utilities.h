@@ -1,7 +1,6 @@
 #pragma once
-#include <cmath>
-#include <algorithm>
-using namespace std;
+#include <memory>
+using std::unique_ptr;
 
 template <class Int=int> Int ClampToUint8(Int x)
 {
@@ -10,3 +9,7 @@ template <class Int=int> Int ClampToUint8(Int x)
 }
 
 void FillBoundary(unsigned char *image_out, int offset, int w, int h, int bpp);
+
+template<class Float> unique_ptr<Float[]> CreateGaussianKernel(Float sigma, int radius);
+extern template unique_ptr<float[]> CreateGaussianKernel(float sigma, int radius);
+extern template unique_ptr<double[]> CreateGaussianKernel(double sigma, int radius);
