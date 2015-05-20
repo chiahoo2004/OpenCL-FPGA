@@ -1,11 +1,11 @@
 #include "gaussianfilter.h"
 #include "enhancement.h"
 #include "utilities.h"
+#include "timer.h"
 #include <iostream>
 #include <memory>
 #include <IL/il.h>
 #include <glog/logging.h>
-#include <ctime>
 using namespace std;
 
 #define IL_CHECK_ERROR() {auto e = ilGetError();CHECK_EQ(e, IL_NO_ERROR)<<e;}
@@ -54,8 +54,12 @@ int main(int argc, char const* argv[])
 	filter->SetDimension(w, h, bpp);
 
 	// Enhance
+	Clock tic, toc;
+	tic = GetNow();
 	float weights[] = {2.0f, 2.0f};
 	Enhance(original_float.get(), enhanced_float.get(), weights, w, h, bpp, sizeof(weights)/sizeof(float), filter);
+	toc = GetNow();
+	LOG(INFO) << "Time elapsed: " << DiffUsInLongLong(tic, toc) << "us";
 
 	// Store enhanced image
 	transform(enhanced_float.get(), enhanced_float.get()+image_size, color_img_ptr, [](const float x)->ILubyte {
