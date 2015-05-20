@@ -1,15 +1,17 @@
 #pragma once
-#include <vector>
-using std::vector;
+#include "filter.h"
 
-struct GaussianFilter {
-	void FillBoundary(unsigned char* image_out, int offset, int w, int h, int bpp);
-	void Edge(unsigned char *image_in, unsigned char* image_out, float sigma, int radius, int w, int h, int bpp);
-	void Run(
-		unsigned char *image_in, unsigned char* image_out,
-		float sigma, int radius, int w, int h, int bpp);
-	void RunImproved(
-		unsigned char *image_in, unsigned char* image_out,
-		float sigma, int radius, int w, int h, int bpp);
+struct GaussianFilter: public Filter {
+	struct Parameter {
+		float r_sigma;
+		int radius;
+	};
+	virtual void Run(const float *image_in, float* image_out);
+	virtual void SetDimension(const int w, const int h, const int channel);
+	void SetParameter(const Parameter &param) {
+		param_ = param;
+	}
+private:
+	Parameter param_;
 };
 

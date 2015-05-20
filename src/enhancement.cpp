@@ -1,43 +1,28 @@
 #include "utilities.h"
 #include "enhancement.h" 
+#include "filter.h"
 #include <glog/logging.h>
+#include <memory>
 
-//#define DEBUG1 1
-
-void Enhance(unsigned char **images_clear_to_blur, unsigned char *out, const float *weights, const int w, const int h, const int bpp, const int layer)
+void Enhance(
+	const float *img_in, float *img_out, const float *weights,
+	const int w, const int h, const int channel, const int n_diff_layer, Filter *filter
+)
 {
-	vector<vector<float> > color_img_diff;
-	color_img_diff.resize(layer-1);
-	for (int i = 0; i < layer-1; ++i)
-		color_img_diff[i].resize(w*h*bpp); 
-	for (int i = w*bpp; i < w*(h-1)*bpp; ++i) {
-		// TODO!
-		float accumulate = 0.0f;
-		for (int j = 0; j < layer-1; ++j){
-			color_img_diff[j][i] = images_clear_to_blur[j][i] - images_clear_to_blur[j+1][i];
-
-			#ifdef DEBUG1
-				LOG(INFO)<<"color_img_diff["<<j<<"]["<<i<<"] ("<<color_img_diff[j][i]<<") = images_clear_to_blur["<<j<<"]["<<i<<"] ("<<(double)images_clear_to_blur[j][i]<<")"
-				<<" - images_clear_to_blur["<<j+1<<"]["<<i<<"] ("<<(double)images_clear_to_blur[j+1][i]<<")"<<endl;
-			#endif
-
+	const int image_size = w*h*channel;
+	unique_ptr<float[]> buffer(new float[image_size*n_diff_layer]);
+	unique_ptr<float*[]> layers(new float*[n_diff_layer+1]); // blur to clear
+	// const_cast is OK because we won't obey it
+	layers[n_diff_layer] = const_cast<float*>(img_in);
+	for (int i = n_diff_layer-1; i >= 0; --i) {
+		layers[i] = buffer.get() + image_size*i;
+		filter->Run(layers[i+1], layers[i]);
+	}
+	for (int i = 0; i < image_size; ++i) {
+		float accumulate = layers[0][i];
+		for (int j = 0; j < n_diff_layer; ++j){
+			accumulate += weights[j] * (layers[j+1][i]-layers[j][i]);
 		}
-		accumulate += weights[0]*images_clear_to_blur[0][i];
-
-		#ifdef DEBUG1
-			DLOG(INFO)<<"accumulate += weights[0] ("<<weights[0]<<") * images_clear_to_blur[0]["<<i<<"] ("<<(double)images_clear_to_blur[0][i]<<")"<<endl;
-		#endif
-
-		for (int j = 0; j < layer-1; ++j){
-			accumulate += weights[j+1] * color_img_diff[j][i];
-			#ifdef DEBUG1
-				DLOG(INFO)<<"accumulate += weights["<<j+1<<"] ("<<weights[j+1]<<") * color_img_diff["<<j<<"]["<<i<<"] ("<<color_img_diff[j][i]<<")"<<endl;
-			#endif
-		}
-		out[i] = ClampToUint8((int)accumulate);
-
-		#ifdef DEBUG1
-			DLOG(INFO)<<"out["<<i<<"] = "<<(double)out[i]<<endl;
-		#endif
+		img_out[i] = accumulate;
 	}
 }

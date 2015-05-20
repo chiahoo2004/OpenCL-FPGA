@@ -1,5 +1,6 @@
 #include "gaussianfilter.h"
 #include "enhancement.h"
+#include "utilities.h"
 #include <iostream>
 #include <memory>
 #include <IL/il.h>
@@ -13,7 +14,7 @@ int main(int argc, char const* argv[])
 	// Initialize Glog and libIL
 	google::InitGoogleLogging(argv[0]);
 	FLAGS_logtostderr = true;
-	CHECK_EQ(argc, 4) << "Usage: <executable> <input> <output> <output>";
+	CHECK_EQ(argc, 3) << "Usage: <executable> <input> <output>";
 	ilInit();
 	LOG(INFO) << "Using devil library version " << ilGetInteger(IL_VERSION_NUM);
 
@@ -29,61 +30,39 @@ int main(int argc, char const* argv[])
 	auto bpp = ilGetInteger(IL_IMAGE_BPP); // bpp = byte per pixels
 	auto w = ilGetInteger(IL_IMAGE_WIDTH);
 	auto h = ilGetInteger(IL_IMAGE_HEIGHT);
+	auto image_size = w*h*bpp;
 	LOG(INFO) << "Load image width = " << w << ", height = " << h;
 	ILubyte *color_img_ptr = ilGetData();
-	unique_ptr<ILubyte[]> color_img_buffer(new ILubyte[w*h*bpp]);
-	unique_ptr<ILubyte[]> color_img_buffer2(new ILubyte[w*h*bpp]);
-	unique_ptr<ILubyte[]> out(new ILubyte[w*h*bpp]);
+	unique_ptr<float[]> original_float(new float[image_size]);
+	unique_ptr<float[]> enhanced_float(new float[image_size]);
 	IL_CHECK_ERROR();
+	copy(color_img_ptr, color_img_ptr+image_size, original_float.get());
 
 	float sigma;
 	int radius;
 	cout<<"<sigma> <radius> : ";
 	cin>>sigma>>radius;
 
-	// Gaussian filter
+	// Filter
+	Filter *filter;
+
+	// Gaussian
 	GaussianFilter gf;
-	clock_t start, stop;
-	start = clock();
-	gf.Run(color_img_ptr, color_img_buffer.get(), sigma, radius, w, h, bpp);
-	stop = clock();
-	LOG(INFO)<<"original time : "<<double(stop - start) / CLOCKS_PER_SEC<<" s"<<endl;
-	start = clock();
-	gf.RunImproved(color_img_ptr, color_img_buffer.get(), sigma, radius, w, h, bpp);
-	stop = clock();
-	LOG(INFO)<<"improved time : "<<double(stop - start) / CLOCKS_PER_SEC<<" s"<<endl;
+	gf.SetParameter({sigma, radius});
 
-	// store image
-  	int layer = 3;
-	ILubyte** images_clear_to_blur = new ILubyte*[layer];
-	for(int i = 0; i < layer ; ++i){
-		images_clear_to_blur[i] = new ILubyte[w*h*bpp];
-	}
-	copy(color_img_ptr, color_img_ptr+w*h*bpp, *images_clear_to_blur);
-	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, color_img_ptr);
+	filter = dynamic_cast<Filter*>(&gf);
+	filter->SetDimension(w, h, bpp);
 
+	// Enhance
+	float weights[] = {2.0f, 2.0f};
+	Enhance(original_float.get(), enhanced_float.get(), weights, w, h, bpp, sizeof(weights)/sizeof(float), filter);
+
+	// Store enhanced image
+	transform(enhanced_float.get(), enhanced_float.get()+image_size, color_img_ptr, [](const float x)->ILubyte {
+		return ClampToUint8<int>(x);
+	});
 	ilEnable(IL_FILE_OVERWRITE);
 	ilSaveImage(argv[2]);
-	IL_CHECK_ERROR();
-
-  	unique_ptr<float[]> weights(new float[layer]);
-  	*(weights.get()) = 1;
-  	cout<<"weights <original-first smooth> <first smooth-second smooth> : ";
-  	cin>>*(weights.get()+1)>>*(weights.get()+2);
-  	gf.Run(color_img_buffer.get(), color_img_buffer2.get(), sigma, radius, w, h, bpp);
-
-	copy(color_img_buffer.get(), color_img_buffer.get()+w*h*bpp, *(images_clear_to_blur+1));
-	copy(color_img_buffer2.get(), color_img_buffer2.get()+w*h*bpp, *(images_clear_to_blur+2));
-	Enhance((unsigned char**)images_clear_to_blur, out.get(), weights.get(), w, h, bpp, layer);
-	copy(out.get(), out.get()+w*h*bpp, color_img_ptr);
-
-	for(int i = 0; i < layer ; ++i){
-		delete [] images_clear_to_blur[i];
-	}
-	delete [] images_clear_to_blur;
-
-	ilEnable(IL_FILE_OVERWRITE);
-	ilSaveImage(argv[3]);
 	IL_CHECK_ERROR();
 
 	ilDeleteImages(1, &image);
