@@ -1,5 +1,5 @@
 # project
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 project(Enhancement)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../cmake")
 
@@ -11,7 +11,10 @@ endif()
 # libraries
 find_package(DevIL REQUIRED)
 find_package(Glog REQUIRED)
-include_directories(${IL_INCLUDE_DIR})
+find_package(OpenCL REQUIRED)
+
+# set link/include path
+# passed, pretend that all of them are in system path...
 
 add_executable(enhancement
 	bilateralfilter.cpp
@@ -21,5 +24,6 @@ add_executable(enhancement
 	gaussianfilter.cpp
 	guidedfilter.cpp
 	utilities.cpp
+	cl_helper.cpp
 )
-target_link_libraries(enhancement ${IL_LIBRARIES} ${GLOG_LIBRARIES})
+target_link_libraries(enhancement ${IL_LIBRARIES} ${GLOG_LIBRARIES} ${OpenCL_LIBRARIES})
