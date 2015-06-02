@@ -16,7 +16,7 @@ void Enhance(
 	layers[n_diff_layer] = const_cast<float*>(img_in);
 	for (int i = n_diff_layer-1; i >= 0; --i) {
 		layers[i] = buffer.get() + image_size*i;
-		filter->Run(layers[i+1], layers[i]);
+		filter->Run_ocl(layers[i+1], layers[i]);
 	}
 	for (int i = 0; i < image_size; ++i) {
 		float accumulate = layers[0][i];

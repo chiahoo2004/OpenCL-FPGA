@@ -1,11 +1,19 @@
 #pragma once
+#include "filter.h"
 #include <vector>
 using std::vector;
 
-struct GuidedFilter {
-	void FillBoundary(unsigned char* image_out, int offset, int w, int h, int bpp);
-	void Run(
-		unsigned char *image_in, unsigned char* image_out, unsigned char* I,
-		vector<vector<vector<double> > >& a, vector<vector<vector<double> > >& b, 
-		int windowSize, double epsilon, int w, int h, int bpp);
+struct GuidedFilter: public Filter {
+	struct Parameter {
+		float epsilon;
+		int radius;
+	};
+	virtual void Run_cxx(const float *image_in, float* image_out);
+	virtual void Run_ocl(const float *image_in, float* image_out);
+	virtual void SetDimension(const int w, const int h, const int channel);
+	void SetParameter(const Parameter &param) {
+		param_ = param;
+	}
+private:
+	Parameter param_;
 };

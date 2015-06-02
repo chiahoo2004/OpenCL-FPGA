@@ -20,10 +20,10 @@ add_executable(enhancement
 	bilateralfilter.cpp
 	enhancement.cpp
 	filter.cpp
-	gaussian.cpp
 	gaussianfilter.cpp
 	guidedfilter.cpp
 	utilities.cpp
 	cl_helper.cpp
+	main.cpp
 )
 target_link_libraries(enhancement ${IL_LIBRARIES} ${GLOG_LIBRARIES} ${OpenCL_LIBRARIES})
