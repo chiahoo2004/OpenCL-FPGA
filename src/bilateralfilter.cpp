@@ -8,16 +8,6 @@
 #include <memory>
 using namespace std;
 
-unique_ptr<float[]> GenerateGaussianTable(const float sigma, const int length)
-{
-	unique_ptr<float[]> table(new float[length]);
-	const float denominator_inverse = -1.0f / (2.0f * sigma * sigma);
-	for (int i = 0; i < length; ++i) {
-		table.get()[i] = exp(i*i*denominator_inverse);
-	}
-	return std::move(table);
-}
-
 void BilateralFilter::SetDimension(const int w, const int h, const int channel)
 {
 	Filter::SetDimension(w, h, channel);

@@ -115,20 +115,19 @@ DeviceManager::~DeviceManager()
 	CHECK_EQ(result, CL_SUCCESS) << clewErrorString(result);
 }
 
-static unique_ptr<char[]> LoadFile(const char *file_name)
+unique_ptr<char[]> LoadFile(const char *file_name)
 {
 	FILE *fp = fopen(file_name, "rb");
 	CHECK_NOTNULL(fp);
 
 	// Get size
 	fseek(fp, 0, SEEK_END);
-	const auto file_size = ftell(fp);
+	const long file_size = ftell(fp);
 
 	// Now allocate and read
-	unique_ptr<char[]> file_data(new char[file_size+1]);
+	unique_ptr<char[]> file_data(new char[file_size]);
 	rewind(fp);
 	fread(file_data.get(), 1, file_size, fp);
-	file_data[file_size] = '\0';
 	fclose(fp);
 
 	return move(file_data);
