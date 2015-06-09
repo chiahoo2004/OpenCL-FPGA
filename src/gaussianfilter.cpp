@@ -78,8 +78,8 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 
 	const int work_w = w-2*r;
 	const int work_h = h-2*r;
-	const size_t block_dim[3] = {32, 16, 1};
-	const size_t grid_dim[3] = {w, h, bpp};
+	const size_t block_dim[2] = {32, 16};
+	const size_t grid_dim[2] = {w, h};
 
 	device_manager->Call(
 		kernel,
@@ -94,7 +94,7 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 			{d_range_gaussian_table.get(), sizeof(cl_mem)},
 			{d_mid.get(), sizeof(cl_mem)}
 		},
-		3, grid_dim, nullptr, block_dim
+		2, grid_dim, nullptr, block_dim
 	);
 
 	float* mid = new float[w*h*bpp];
@@ -115,7 +115,7 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 			{d_range_gaussian_table.get(), sizeof(cl_mem)},
 			{d_mid.get(), sizeof(cl_mem)}
 		},
-		3, grid_dim, nullptr, block_dim
+		2, grid_dim, nullptr, block_dim
 	);
 
 	device_manager->ReadMemory(image_out, *d_out.get(), w*h*bpp*sizeof(float));

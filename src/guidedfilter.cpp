@@ -167,8 +167,8 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 
 	const int work_w = w-2*r;
 	const int work_h = h-2*r;
-	const size_t block_dim[3] = {32, 16, 1};
-	const size_t grid_dim[3] = {CeilDiv(w, block_dim[0])*block_dim[0], CeilDiv(h, block_dim[1])*block_dim[1], bpp};
+	const size_t block_dim[2] = {32, 16};
+	const size_t grid_dim[2] = {CeilDiv(w, block_dim[0])*block_dim[0], CeilDiv(h, block_dim[1])*block_dim[1]};
 
 	device_manager->Call(
 		kernel1,
@@ -185,7 +185,7 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 			{d_b.get(), sizeof(cl_mem)},
 			{d_I.get(), sizeof(cl_mem)}
 		},
-		3, grid_dim, nullptr, block_dim
+		2, grid_dim, nullptr, block_dim
 	);
 
 	cl_kernel kernel2 = device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
@@ -205,7 +205,7 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 			{d_b.get(), sizeof(cl_mem)},
 			{d_I.get(), sizeof(cl_mem)}
 		},
-		3, grid_dim, nullptr, block_dim
+		2, grid_dim, nullptr, block_dim
 	);
 
 	device_manager->ReadMemory(image_out, *d_out.get(), w*h*bpp*sizeof(float));
