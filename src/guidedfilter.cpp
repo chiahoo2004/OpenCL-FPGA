@@ -29,34 +29,10 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 	const int size = length * length;
 	CHECK_NE(w, 0) << "Width might not be 0";
 	CHECK_NE(h, 0) << "Height might not be 0";
+	
+	unique_ptr<float[]> a(new float[w*h*bpp]);
+	unique_ptr<float[]> b(new float[w*h*bpp]);
 
-	vector<vector<vector<float> > > a;
-	vector<vector<vector<float> > > b;
-	a.resize(w);
-	b.resize(w);
-	for(int i=0; i<w; ++i) { 
-		a[i].resize(h);
-		b[i].resize(h);	
-		for(int j=0; j<h; ++j) { 
-			a[i][j].resize(bpp);
-			b[i][j].resize(bpp);	
-		}	
-	}
-/*
-	const int image_size = w*h*bpp;
-	unique_ptr<float**[]> a(new float**[w]);
-	unique_ptr<float**[]> b(new float**[w]);
-	unique_ptr<float*[]> buffer(new float*[w*h]);
-	unique_ptr<float[]> buffer1(new float[w*h*bpp]);
-	for (int i = 0; i < w; ++i) {
-		a[i] = buffer.get() + h*i;
-		b[i] = buffer.get() + h*i;
-		for(int j=0; j<h; ++j) {
-			a[i][j] =  buffer1.get() + h*i + bpp*j;
-			b[i][j] =  buffer1.get() + h*i + bpp*j;
-		}
-	}
-*/
 	const int line_stride = bpp*w;
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = offset; x < w-offset; ++x) {
@@ -105,8 +81,8 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 				DLOG(INFO)<<"b_temp = "<<b_temp<<endl;
 				#endif
 			
-				a[x][y][d] = a_temp;
-				b[x][y][d] = b_temp;
+				a[x*bpp+y*line_stride+d] = a_temp;
+				b[x*bpp+y*line_stride+d] = b_temp;
 				#ifdef DEBUG1
 				DLOG(INFO)<<"a["<<x<<"]["<<y<<"]["<<d<<"] = "<<a_temp<<endl;
 				DLOG(INFO)<<"b["<<x<<"]["<<y<<"]["<<d<<"] = "<<b_temp<<endl;
@@ -130,8 +106,8 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 
 				for (int i = -offset; i <= offset; i++) {
 					for(int j = -offset; j <= offset; j++) {
-						sum_a += a[x+i][y+j][d];
-						sum_b += b[x+i][y+j][d];
+						sum_a += a[(x+i)*bpp+(y+j)*line_stride+d];
+						sum_b += b[(x+i)*bpp+(y+j)*line_stride+d];
 						#ifdef DEBUG2
 						DLOG(INFO)<<"sum_a += "<<sum_a<<endl;
 						DLOG(INFO)<<"sum_b += "<<sum_b<<endl;

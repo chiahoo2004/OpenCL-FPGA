@@ -82,8 +82,8 @@ int main(int argc, char** argv)
 	// Filter, fix it at compile time now
 	Filter *filter;
 //	FilterMethod filter_method = FilterMethod::Bilateral;
-	FilterMethod filter_method = FilterMethod::Gaussian;
-//	FilterMethod filter_method = FilterMethod::Guided;
+//	FilterMethod filter_method = FilterMethod::Gaussian;
+	FilterMethod filter_method = FilterMethod::Guided;
 	switch (filter_method) {
 		case FilterMethod::Gaussian: {
 			GaussianFilter *gf = new GaussianFilter;
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
 		}
 		case FilterMethod::Guided: {
 			GuidedFilter *gf = new GuidedFilter;
-			gf->SetParameter({100.0f, 1});
+			gf->SetParameter({1000.0f, 1});
 			filter = dynamic_cast<Filter*>(gf);
 			break;
 		}
@@ -118,25 +118,25 @@ int main(int argc, char** argv)
 	
 	// OpenCL
 //	device_manager->GetKernel("bilateral.cl", "bilateral"); // preload the kernel
-	device_manager->GetKernel("gaussian1d.cl", "gaussian1d"); // preload the kernel
-	device_manager->GetKernel("gaussian1dtwo.cl", "gaussian1dtwo");
-//	device_manager->GetKernel("guided.cl", "guided");
-//	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
+//	device_manager->GetKernel("gaussian1d.cl", "gaussian1d"); // preload the kernel
+//	device_manager->GetKernel("gaussian1dtwo.cl", "gaussian1dtwo");
+	device_manager->GetKernel("guided.cl", "guided");
+	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
 	tic = GetNow();
-	filter->Run_ocl(original_float.get(), enhanced_float.get());
+//	filter->Run_ocl(original_float.get(), enhanced_float.get());
 	toc = GetNow();
 	elapsed_ocl = DiffUsInLongLong(tic, toc);
 
 	LOG(INFO) << "Without OpenCL: " << elapsed_cxx << "us";
 	LOG(INFO) << "With OpenCL: " << elapsed_ocl << "us";
 	LOG(INFO) << "Speedup: " << elapsed_cxx/float(elapsed_ocl) << "x";
-
+/*
 	tic = GetNow();
 	float weights[] = {2.0f, 2.0f};
 	Enhance(original_float.get(), enhanced_float.get(), weights, w, h, bpp, sizeof(weights)/sizeof(float), filter);
 	toc = GetNow();
 	LOG(INFO) << "Time elapsed: " << DiffUsInLongLong(tic, toc) << "us";
-
+*/
 	// Store enhanced image
 	transform(enhanced_float.get(), enhanced_float.get()+image_size, color_img_ptr, [](const float x)->ILubyte {
 		return ClampToUint8<int>(x);

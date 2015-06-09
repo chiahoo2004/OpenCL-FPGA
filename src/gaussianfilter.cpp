@@ -24,57 +24,33 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 
 	auto kernel = CreateGaussianKernel(param_.spacial_sigma, radius);
 	int buf_size = radius*2+1;
-/*	vector<vector<vector<float>>> mid;
-	mid.resize(h);
-	for(int i=0; i<h; ++i) {
-		mid[i].resize(w);
-		for (int j = 0; j < w; ++j) {
-			mid[i][j].resize(bpp);
-		}
-	}
-*/
-	float ***mid;
-	// Allocate memory
-	mid = new float**[h];
-	for (int i = 0; i < h; ++i) {
-		mid[i] = new float*[w];
 
-		for (int j = 0; j < w; ++j)
-			mid[i][j] = new float[bpp];
-	}
+	unique_ptr<float[]> mid(new float[w*h*bpp]);
 
 	const int line_stride = bpp*w;
 	for (int y = radius; y < h-radius; ++y) {
 		for (int a = 0; a < bpp; ++a){
 			for (int b = 0; b < 2*radius+1; ++b){
 				for (int c = -radius; c < radius; ++c){
-					mid[y][b][a] += kernel[c+radius] * image_in[(y+c)*line_stride+(a+bpp*b)];;
+					mid[y*line_stride+b*bpp+a] += kernel[c+radius] * image_in[(y+c)*line_stride+(a+bpp*b)];;
 				}
 			}
 		}
 		for (int x = (radius+1); x < w-radius; ++x) {
 			for (int d = 0; d < bpp; ++d) {
 				for (int c = -radius; c <= radius; ++c) {
-					mid[y][ x+radius ][ d ] += kernel[c+radius] * image_in[(y+c)*line_stride+(d+bpp*(x+radius))];
+					mid[y*line_stride+(x+radius)*bpp+d] += kernel[c+radius] * image_in[(y+c)*line_stride+(d+bpp*(x+radius))];
 				}
 
 				float pixel_output = 0;
 				for (int c = -radius; c < radius; ++c)
 				{
-					pixel_output += kernel[c+radius] * mid[y][ x+c ][ d ];
+					pixel_output += kernel[c+radius] * mid[y*line_stride+(x+c)*bpp+d];
 				}
 				image_out[y*line_stride+x*bpp+d] = pixel_output;
 			}
 		}
 	}
-
-	for (int i = 0; i < h; ++i) {
-		for (int j = 0; j < w; ++j)
-			delete [] mid[i][j];
-		delete [] mid[i];
-		}
-	delete [] mid;
-
 }
 
 void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
