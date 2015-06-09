@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 	switch (filter_method) {
 		case FilterMethod::Gaussian: {
 			GaussianFilter *gf = new GaussianFilter;
-			gf->SetParameter({10.0f, 30});
+			gf->SetParameter({10.0f, 1});
 			filter = dynamic_cast<Filter*>(gf);
 			break;
 		}
@@ -118,8 +118,10 @@ int main(int argc, char** argv)
 	
 	// OpenCL
 //	device_manager->GetKernel("bilateral.cl", "bilateral"); // preload the kernel
+	device_manager->GetKernel("gaussian1d.cl", "gaussian1d"); // preload the kernel
+	device_manager->GetKernel("gaussian1dtwo.cl", "gaussian1dtwo");
 //	device_manager->GetKernel("guided.cl", "guided");
-	device_manager->GetKernel("gaussian.cl", "gaussian"); // preload the kernel
+//	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
 	tic = GetNow();
 	filter->Run_ocl(original_float.get(), enhanced_float.get());
 	toc = GetNow();

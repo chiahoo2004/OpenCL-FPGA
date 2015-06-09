@@ -1,5 +1,8 @@
+#include "global.h"
+#include "cl_helper.h"
 #include "guidedfilter.h"
 #include "utilities.h"
+#include <IL/il.h>
 #include <glog/logging.h>
 #include <cmath>
 #include <memory>
@@ -158,4 +161,77 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 
 void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 {
+	const int w = w_;
+	const int h = h_;
+	const int bpp = channel_;
+	const int r = param_.radius;
+	const float epsilon = param_.epsilon;
+	const float* I = image_in;
+	const int length = r*2+1;
+	const int offset = r;
+	const int size = length * length;
+	const int line_stride = w*bpp;
+	if (w <= 2*r || h <= 2*r) {
+		LOG(WARNING) << "No work to do";
+		return;
+	}
+//	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, r+1);
+	cl_kernel kernel1 = device_manager->GetKernel("guided.cl", "guided");
+
+	auto d_a = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_b = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_I = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+
+//	auto d_range_gaussian_table = device_manager->AllocateMemory(CL_MEM_READ_ONLY, (r+1)*sizeof(float));
+	auto d_in = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_out = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+//	device_manager->WriteMemory(range_gaussian_table.get(), *d_range_gaussian_table.get(), (r+1)*sizeof(float));
+	device_manager->WriteMemory(image_in, *d_in.get(), w*h*bpp*sizeof(float));
+	device_manager->WriteMemory(image_in, *d_I.get(), w*h*bpp*sizeof(float));
+
+	const int work_w = w-2*r;
+	const int work_h = h-2*r;
+	const size_t block_dim[3] = {32, 16, 1};
+	const size_t grid_dim[3] = {CeilDiv(w, block_dim[0])*block_dim[0], CeilDiv(h, block_dim[1])*block_dim[1], bpp};
+
+	device_manager->Call(
+		kernel1,
+		{
+			{d_in.get(), sizeof(cl_mem)},
+			{d_out.get(), sizeof(cl_mem)},
+			{&r, sizeof(int)},
+			{&epsilon, sizeof(float)},
+			{&work_w, sizeof(int)},
+			{&work_h, sizeof(int)},
+			{&bpp, sizeof(int)},
+			{&line_stride, sizeof(int)},
+			{d_a.get(), sizeof(cl_mem)},
+			{d_b.get(), sizeof(cl_mem)},
+			{d_I.get(), sizeof(cl_mem)}
+		},
+		3, grid_dim, nullptr, block_dim
+	);
+
+	cl_kernel kernel2 = device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
+
+	device_manager->Call(
+		kernel2,
+		{
+			{d_in.get(), sizeof(cl_mem)},
+			{d_out.get(), sizeof(cl_mem)},
+			{&r, sizeof(int)},
+			{&epsilon, sizeof(float)},
+			{&work_w, sizeof(int)},
+			{&work_h, sizeof(int)},
+			{&bpp, sizeof(int)},
+			{&line_stride, sizeof(int)},
+			{d_a.get(), sizeof(cl_mem)},
+			{d_b.get(), sizeof(cl_mem)},
+			{d_I.get(), sizeof(cl_mem)}
+		},
+		3, grid_dim, nullptr, block_dim
+	);
+
+	device_manager->ReadMemory(image_out, *d_out.get(), w*h*bpp*sizeof(float));
+//	device_manager->ReadMemory(image_out, *d_in.get(), w*h*bpp*sizeof(float));
 }
