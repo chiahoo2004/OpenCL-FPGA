@@ -154,7 +154,9 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 //	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, r+1);
 	cl_kernel kernel1 = device_manager->GetKernel("guided.cl", "guided");
 
-	auto d_a = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_a_r = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_a_g = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_a_b = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 	auto d_b = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 	auto d_I = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 
@@ -181,13 +183,321 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 			{&work_h, sizeof(int)},
 			{&bpp, sizeof(int)},
 			{&line_stride, sizeof(int)},
-			{d_a.get(), sizeof(cl_mem)},
+			{d_a_r.get(), sizeof(cl_mem)},
+			{d_a_g.get(), sizeof(cl_mem)},
+			{d_a_b.get(), sizeof(cl_mem)},
 			{d_b.get(), sizeof(cl_mem)},
 			{d_I.get(), sizeof(cl_mem)}
 		},
 		2, grid_dim, nullptr, block_dim
 	);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		int x=1;
+		int y=1;
+
+
+
+		float sum_g[3]={};
+		float square_g[3]={};
+		float sum_in[3]={};
+		float sum[3][3]={{0,0,0},{0,0,0},{0,0,0}};
+
+		float corr_rg = 0;
+		float corr_rb = 0;
+		float corr_gb = 0;
+
+		float mean_g[3]={};
+		float squaremean_g[3]={};
+		float mean_in[3]={};
+
+		float var_I_rr = 0;
+		float var_I_rg = 0;
+		float var_I_rb = 0;
+		float var_I_gg = 0;
+		float var_I_gb = 0;
+		float var_I_bb = 0;
+
+		float a_temp[3][3]={}; 
+		float b_temp[3]={};
+
+		unique_ptr<float[]> a_r(new float[w*h*bpp]);
+		unique_ptr<float[]> a_g(new float[w*h*bpp]);
+		unique_ptr<float[]> a_b(new float[w*h*bpp]);
+		unique_ptr<float[]> b(new float[w*h*bpp]);
+
+
+		for (int d = 0; d < bpp; ++d) {
+
+			for (int a = -offset; a <= offset; a++) {
+				for(int b = -offset; b <= offset; b++) {
+
+					sum_g[d] += I[(y+a)*line_stride+(x*bpp+d+b*bpp)];
+					
+					square_g[d] += I[(y+a)*line_stride+(x*bpp+d+b*bpp)] * I[(y+a)*line_stride+(x*bpp+d+b*bpp)];
+					sum_in[d] += image_in[(y+a)*line_stride+(x*bpp+d+b*bpp)]; 
+					
+					sum[d][0] += I[(y+a)*line_stride+(x*bpp+ 0 +b*bpp)] * image_in[(y+a)*line_stride+(x*bpp+d+b*bpp)];
+					sum[d][1] += I[(y+a)*line_stride+(x*bpp+ 1 +b*bpp)] * image_in[(y+a)*line_stride+(x*bpp+d+b*bpp)];
+					sum[d][2] += I[(y+a)*line_stride+(x*bpp+ 2 +b*bpp)] * image_in[(y+a)*line_stride+(x*bpp+d+b*bpp)];
+
+					if (d==0) {
+						corr_rg += I[(y+a)*line_stride+(x*bpp+ 0 +b*bpp)] * I[(y+a)*line_stride+(x*bpp+ 1 +b*bpp)];
+						corr_rb += I[(y+a)*line_stride+(x*bpp+ 0 +b*bpp)] * I[(y+a)*line_stride+(x*bpp+ 2 +b*bpp)];
+						corr_gb += I[(y+a)*line_stride+(x*bpp+ 1 +b*bpp)] * I[(y+a)*line_stride+(x*bpp+ 2 +b*bpp)];
+					}
+
+					#ifdef DEBUG1
+					DLOG(INFO)<<"I["<<(y+a)*line_stride+(x*bpp+d+b*bpp)<<"] = "<<I[(y+a)*line_stride+(x*bpp+d+b*bpp)]<<endl;
+					DLOG(INFO)<<"image["<<(y+a)*line_stride+(x*bpp+d+b*bpp)<<"] = "<<in[(y+a)*line_stride+(x*bpp+d+b*bpp)]<<endl;
+					#endif
+
+				}
+			}
+
+			mean_g[d] = sum_g[d]/size;
+			squaremean_g[d] = square_g[d]/size;
+			mean_in[d] = sum_in[d]/size;
+
+		}
+
+
+/*
+		for (int d = 0; d < bpp; ++d) {
+			for (int a = -offset; a <= offset; a++) {
+					for(int b = -offset; b <= offset; b++) {
+						LOG(INFO)<<"image_in["<<y+a<<"]["<<x+b<<"]["<<d<<"]="<<image_in[(y+a)*line_stride+(x*bpp+d+b*bpp)];
+				}
+			}
+		}
+*/
+
+/*
+		for (int d = 0; d < bpp; ++d) {
+			LOG(INFO)<<mean_g[d];
+			LOG(INFO)<<squaremean_g[d];
+			LOG(INFO)<<mean_in[d];
+		}
+*/
+		corr_rg /= size; 
+		corr_rb /= size; 
+		corr_gb /= size; 
+
+		LOG(INFO)<<corr_rg;
+		LOG(INFO)<<mean_g[0];
+		LOG(INFO)<<mean_g[1];
+
+		var_I_rr = squaremean_g[0] - mean_g[0] * mean_g[0];
+		var_I_rg = corr_rg - mean_g[0] * mean_g[1];
+		var_I_rb = corr_rb - mean_g[0] * mean_g[2];
+		var_I_gg = squaremean_g[1] - mean_g[1] * mean_g[1];
+		var_I_gb = corr_gb - mean_g[1] * mean_g[2];
+		var_I_bb = squaremean_g[2] - mean_g[2] * mean_g[2];
+
+
+		LOG(INFO)<<var_I_rr;
+		LOG(INFO)<<var_I_rg;
+		LOG(INFO)<<var_I_rb;
+		LOG(INFO)<<var_I_gg;
+		LOG(INFO)<<var_I_gb;
+		LOG(INFO)<<var_I_bb;
+
+
+
+		float m[3][3];
+		m[0][0] = var_I_rr + epsilon;
+		m[0][1] = var_I_rg;
+		m[0][2] = var_I_rb;
+		m[1][0] = var_I_rg;
+		m[1][1] = var_I_gg + epsilon;
+		m[1][2] = var_I_gb;
+		m[2][0] = var_I_rb;
+		m[2][1] = var_I_gb;
+		m[2][2] = var_I_bb + epsilon; 
+
+
+		for (int a = 0; a < bpp; a++) {
+			LOG(INFO)<<m[a][0]<<" "<<m[a][1]<<" "<<m[a][2];
+		}
+
+
+		// computes the inverse of a matrix m
+		float det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
+		             m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+		             m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+
+		float invdet = 1 / det;
+
+		float minv[3][3]; // inverse of matrix m
+		minv[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * invdet;
+		minv[0][1] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) * invdet;
+		minv[0][2] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) * invdet;
+		minv[1][0] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) * invdet;
+		minv[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * invdet;
+		minv[1][2] = (m[1][0] * m[0][2] - m[0][0] * m[1][2]) * invdet;
+		minv[2][0] = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * invdet;
+		minv[2][1] = (m[2][0] * m[0][1] - m[0][0] * m[2][1]) * invdet;
+		minv[2][2] = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * invdet;
+
+
+		for (int a = 0; a < bpp; a++) {
+			LOG(INFO)<<minv[a][0]<<" "<<minv[a][1]<<" "<<minv[a][2];
+		}
+
+
+		for (int d = 0; d < bpp; ++d) {
+
+
+			a_temp[d][0]=minv[0][0]*(sum[d][0]-size*mean_g[0]*mean_in[d])+minv[0][1]*(sum[d][0]-size*mean_g[0]*mean_in[d])+minv[0][2]*(sum[d][0]-size*mean_g[0]*mean_in[d]);
+			a_temp[d][1]=minv[1][0]*(sum[d][1]-size*mean_g[1]*mean_in[d])+minv[1][1]*(sum[d][1]-size*mean_g[1]*mean_in[d])+minv[1][2]*(sum[d][1]-size*mean_g[1]*mean_in[d]);
+			a_temp[d][2]=minv[2][0]*(sum[d][2]-size*mean_g[2]*mean_in[d])+minv[2][1]*(sum[d][2]-size*mean_g[2]*mean_in[d])+minv[2][2]*(sum[d][2]-size*mean_g[2]*mean_in[d]);
+
+			LOG(INFO)<<a_temp[0][0];
+			LOG(INFO)<<a_temp[0][1];
+			LOG(INFO)<<a_temp[0][2];
+
+			a_temp[d][0]/=size;
+			a_temp[d][1]/=size;
+			a_temp[d][2]/=size;
+
+		}
+
+		float au = 0;
+
+		for (int d = 0; d < bpp; ++d) {
+			au = 0;
+			au += a_temp[d][0]*mean_g[0]+a_temp[d][1]*mean_g[1]+a_temp[d][2]*mean_g[2];
+			b_temp[d] = mean_in[d] - au; 
+		}
+
+
+		for (int d = 0; d < bpp; ++d) {
+			
+
+			a_r[y*line_stride+x*bpp+d] = a_temp[d][0];
+			a_g[y*line_stride+x*bpp+d] = a_temp[d][1];
+			a_b[y*line_stride+x*bpp+d] = a_temp[d][2];
+
+			b[y*line_stride+x*bpp+d] = b_temp[d];
+
+		}
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+//	unique_ptr<float[]> a_r(new float[w*h*bpp]);
+//	unique_ptr<float[]> a_g(new float[w*h*bpp]);
+//	unique_ptr<float[]> a_b(new float[w*h*bpp]);
+//	unique_ptr<float[]> b(new float[w*h*bpp]);
+	device_manager->ReadMemory(a_r.get(), *d_a_r.get(), w*h*bpp*sizeof(float));
+	device_manager->ReadMemory(a_g.get(), *d_a_g.get(), w*h*bpp*sizeof(float));
+	device_manager->ReadMemory(a_b.get(), *d_a_b.get(), w*h*bpp*sizeof(float));
+	device_manager->ReadMemory(b.get(), *d_b.get(), w*h*bpp*sizeof(float));
+	for (int y = offset; y < h-offset; ++y) {
+		for (int x = offset; x < w-offset; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				LOG(INFO)<<"a_r["<<y<<"]["<<x<<"]["<<d<<"]="<<a_r[y*line_stride+x*bpp+d];
+				LOG(INFO)<<"a_g["<<y<<"]["<<x<<"]["<<d<<"]="<<a_g[y*line_stride+x*bpp+d];
+				LOG(INFO)<<"a_b["<<y<<"]["<<x<<"]["<<d<<"]="<<a_b[y*line_stride+x*bpp+d];
+
+				LOG(INFO)<<"b["<<y<<"]["<<x<<"]["<<d<<"]="<<b[y*line_stride+x*bpp+d];
+			}
+		}
+	}
+*/
 	cl_kernel kernel2 = device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
 
 	device_manager->Call(
@@ -201,7 +511,9 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 			{&work_h, sizeof(int)},
 			{&bpp, sizeof(int)},
 			{&line_stride, sizeof(int)},
-			{d_a.get(), sizeof(cl_mem)},
+			{d_a_r.get(), sizeof(cl_mem)},
+			{d_a_g.get(), sizeof(cl_mem)},
+			{d_a_b.get(), sizeof(cl_mem)},
 			{d_b.get(), sizeof(cl_mem)},
 			{d_I.get(), sizeof(cl_mem)}
 		},
