@@ -154,7 +154,9 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 //	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, r+1);
 	cl_kernel kernel1 = device_manager->GetKernel("guided.cl", "guided");
 
-	auto d_a = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_a_r = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_a_g = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
+	auto d_a_b = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 	auto d_b = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 	auto d_I = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 
@@ -181,13 +183,15 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 			{&work_h, sizeof(int)},
 			{&bpp, sizeof(int)},
 			{&line_stride, sizeof(int)},
-			{d_a.get(), sizeof(cl_mem)},
+			{d_a_r.get(), sizeof(cl_mem)},
+			{d_a_g.get(), sizeof(cl_mem)},
+			{d_a_b.get(), sizeof(cl_mem)},
 			{d_b.get(), sizeof(cl_mem)},
 			{d_I.get(), sizeof(cl_mem)}
 		},
 		2, grid_dim, nullptr, block_dim
 	);
-
+    
 	cl_kernel kernel2 = device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
 
 	device_manager->Call(
@@ -201,7 +205,9 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 			{&work_h, sizeof(int)},
 			{&bpp, sizeof(int)},
 			{&line_stride, sizeof(int)},
-			{d_a.get(), sizeof(cl_mem)},
+			{d_a_r.get(), sizeof(cl_mem)},
+			{d_a_g.get(), sizeof(cl_mem)},
+			{d_a_b.get(), sizeof(cl_mem)},
 			{d_b.get(), sizeof(cl_mem)},
 			{d_I.get(), sizeof(cl_mem)}
 		},

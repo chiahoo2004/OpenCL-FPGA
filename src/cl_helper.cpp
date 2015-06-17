@@ -125,7 +125,8 @@ unique_ptr<char[]> LoadFile(const char *file_name)
 	const long file_size = ftell(fp);
 
 	// Now allocate and read
-	unique_ptr<char[]> file_data(new char[file_size]);
+	unique_ptr<char[]> file_data(new char[file_size+1]);
+	file_data[file_size]='\0';
 	rewind(fp);
 	fread(file_data.get(), 1, file_size, fp);
 	fclose(fp);

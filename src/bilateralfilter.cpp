@@ -38,7 +38,14 @@ void BilateralFilter::Run_cxx(const float *image_in, float *image_out)
 			for (int a = -offset; a <= offset; a++) {
 				for(int b = -offset; b <= offset; b++) {
 					float spatial = exp(-(x*x+y*y) * spacial_sigma_inverse);
-					float range_diff = image_in[x+y*line_stride]-image_in[x+b*bpp+(y+a)*line_stride];
+//					float range_diff = image_in[x+y*line_stride]-image_in[x+b*bpp+(y+a)*line_stride];
+					float range_diff = 0;
+					for (int d = 0; d < bpp; ++d)
+					{
+						int diff_1d = abs( image_in[d+x+y*line_stride]-image_in[d+x+b*bpp+(y+a)*line_stride] );
+						range_diff += diff_1d * diff_1d;
+					}
+//					range_diff = sqrt(range_diff); 
 					float range = exp(-range_diff * range_diff * color_sigma_inverse);
 					float weight = range * spatial;
 					weight_sum += weight;
@@ -88,6 +95,7 @@ void BilateralFilter::Run_ocl(const float *image_in, float *image_out)
 			{&work_h, sizeof(int)},
 			{&bpp, sizeof(int)},
 			{&w, sizeof(int)},
+			{&color_sigma, sizeof(float)},
 			{d_range_gaussian_table.get(), sizeof(cl_mem)},
 			{d_color_gaussian_table.get(), sizeof(cl_mem)}
 		},
