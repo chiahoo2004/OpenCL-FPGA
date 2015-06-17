@@ -85,14 +85,13 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 		kernel,
 		{
 			{d_in.get(), sizeof(cl_mem)},
-			{d_out.get(), sizeof(cl_mem)},
+			{d_mid.get(), sizeof(cl_mem)},
 			{&r, sizeof(int)},
 			{&work_w, sizeof(int)},
 			{&work_h, sizeof(int)},
 			{&bpp, sizeof(int)},
 			{&line_stride, sizeof(int)},
-			{d_range_gaussian_table.get(), sizeof(cl_mem)},
-			{d_mid.get(), sizeof(cl_mem)}
+			{d_range_gaussian_table.get(), sizeof(cl_mem)}
 		},
 		2, grid_dim, nullptr, block_dim
 	);
@@ -100,20 +99,17 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 	float* mid = new float[w*h*bpp];
 	device_manager->ReadMemory(mid, *d_mid.get(), w*h*bpp*sizeof(float));
 
-	cl_kernel kernel2 = device_manager->GetKernel("gaussian1dtwo.cl", "gaussian1dtwo");
-
 	device_manager->Call(
-		kernel2,
+		kernel,
 		{
-			{d_in.get(), sizeof(cl_mem)},
+			{d_mid.get(), sizeof(cl_mem)},
 			{d_out.get(), sizeof(cl_mem)},
 			{&r, sizeof(int)},
 			{&work_w, sizeof(int)},
 			{&work_h, sizeof(int)},
 			{&bpp, sizeof(int)},
 			{&line_stride, sizeof(int)},
-			{d_range_gaussian_table.get(), sizeof(cl_mem)},
-			{d_mid.get(), sizeof(cl_mem)}
+			{d_range_gaussian_table.get(), sizeof(cl_mem)}
 		},
 		2, grid_dim, nullptr, block_dim
 	);

@@ -6,8 +6,7 @@ __kernel void gaussian1d(
 		const int work_h,
 		const int bpp,
 		const int line_stride,
-		__constant float *range_gaussian_table,
-		__global float *mid
+		__constant float *range_gaussian_table
 )
 {
 	int x = get_global_id(0);
@@ -28,7 +27,7 @@ __kernel void gaussian1d(
 			}
 
 			const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
-			mid[y*line_stride+x*bpp+d] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
+			out[x*line_stride+y*bpp+d] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
 		}
 	}
 }
