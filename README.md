@@ -10,3 +10,6 @@ At the git repo root
     mkdir build
     cd build
     cmake ../src && make
+
+After build the project, the related OpenCL files must be copied along with
+the binary. This should be fixed in the future.
