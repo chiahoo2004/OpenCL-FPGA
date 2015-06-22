@@ -28,31 +28,33 @@ void BilateralFilter::Run_cxx(const float *image_in, float *image_out)
 	CHECK_NE(w, 0) << "Width might not be 0";
 	CHECK_NE(h, 0) << "Height might not be 0";
 	
-	const int line_stride = bpp*w;LOG(INFO)<<(h-offset-1)*line_stride+line_stride-bpp*offset-1;
+	const int line_stride = bpp*w;
+	unique_ptr<float[]> weight_pixel_sum(new float[bpp]);
 	for (int y = offset; y < h-offset; ++y) {
-		for (int x = bpp*offset; x < line_stride-bpp*offset; ++x) {
-
-			float image = 0.0f;
+		for (int x = offset; x < w-offset; ++x) {
 			float weight_sum = 0.0f;
-			float weight_pixel_sum = 0.0f;
-			for (int a = -offset; a <= offset; a++) {
-				for(int b = -offset; b <= offset; b++) {
+			const float *cur_in = image_in+y*line_stride+x*bpp;
+			float *cur_out = image_out+y*line_stride+x*bpp;
+			for (int dy = -offset; dy <= offset; dy++) {
+				for(int dx = -offset; dx <= offset; dx++) {
+					const float *neighbor_in = cur_in+dy*line_stride+dx*bpp;
 					float spatial = exp(-(x*x+y*y) * spacial_sigma_inverse);
-//					float range_diff = image_in[x+y*line_stride]-image_in[x+b*bpp+(y+a)*line_stride];
 					float range_diff = 0;
-					for (int d = 0; d < bpp; ++d)
-					{
-						int diff_1d = abs( image_in[d+x+y*line_stride]-image_in[d+x+b*bpp+(y+a)*line_stride] );
+					for (int d = 0; d < bpp; ++d) {
+						float diff_1d = cur_in[d] - neighbor_in[d];
 						range_diff += diff_1d * diff_1d;
 					}
-//					range_diff = sqrt(range_diff); 
 					float range = exp(-range_diff * range_diff * color_sigma_inverse);
 					float weight = range * spatial;
 					weight_sum += weight;
-					weight_pixel_sum += weight * image_in[(y+a)*line_stride+(x+b*bpp)];
+					for (int d = 0; d < bpp; ++d) {
+						weight_pixel_sum[d] += weight * neighbor_in[d];
+					}
 				}
 			}
-			image_out[y*line_stride+x] = ClampToUint8(int(weight_pixel_sum/weight_sum + 0.5f));
+			for (int d = 0; d < bpp; ++d) {
+				cur_out[d] = weight_pixel_sum[d] / weight_sum;
+			}
 		}
 	}
 }
