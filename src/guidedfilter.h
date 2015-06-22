@@ -1,7 +1,7 @@
 #pragma once
 #include "filter.h"
-#include <vector>
-using std::vector;
+#include <memory>
+using std::unique_ptr;
 
 struct GuidedFilter: public Filter {
 	struct Parameter {
@@ -15,5 +15,6 @@ struct GuidedFilter: public Filter {
 		param_ = param;
 	}
 private:
+	unique_ptr<float[]> a, b;
 	Parameter param_;
 };
