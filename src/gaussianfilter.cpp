@@ -22,35 +22,46 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 	CHECK_NE(w, 0) << "Width might not be 0";
 	CHECK_NE(h, 0) << "Height might not be 0";
 
-	auto kernel = CreateGaussianKernel(param_.spacial_sigma, radius);
-	int buf_size = radius*2+1;
-
+	auto range_gaussian_table = GenerateGaussianTable(param_.spacial_sigma, 2*radius+1);
 	unique_ptr<float[]> mid(new float[w*h*bpp]);
-
 	const int line_stride = bpp*w;
+
 	for (int y = radius; y < h-radius; ++y) {
-		for (int a = 0; a < bpp; ++a){
-			for (int b = 0; b < 2*radius+1; ++b){
-				for (int c = -radius; c < radius; ++c){
-					mid[y*line_stride+b*bpp+a] += kernel[c+radius] * image_in[(y+c)*line_stride+(a+bpp*b)];;
-				}
-			}
-		}
-		for (int x = (radius+1); x < w-radius; ++x) {
+		for (int x = radius; x < w-radius; ++x) {
 			for (int d = 0; d < bpp; ++d) {
-				for (int c = -radius; c <= radius; ++c) {
-					mid[y*line_stride+(x+radius)*bpp+d] += kernel[c+radius] * image_in[(y+c)*line_stride+(d+bpp*(x+radius))];
+				float weight_sum = 0.0f;
+				float weight_pixel_sum = 0.0f;
+				
+				for (int i = -radius; i <= radius; ++i) {
+					int range_diff = abs(i);
+					weight_sum += range_gaussian_table[range_diff];
+					weight_pixel_sum += range_gaussian_table[range_diff] * image_in[(y+i)*line_stride+(x*bpp)+d];
 				}
 
-				float pixel_output = 0;
-				for (int c = -radius; c < radius; ++c)
-				{
-					pixel_output += kernel[c+radius] * mid[y*line_stride+(x+c)*bpp+d];
-				}
-				image_out[y*line_stride+x*bpp+d] = pixel_output;
+				const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
+				mid[x*line_stride+y*bpp+d] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
 			}
 		}
 	}
+	
+	for (int y = radius; y < h-radius; ++y) {
+		for (int x = radius; x < w-radius; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				float weight_sum = 0.0f;
+				float weight_pixel_sum = 0.0f;
+				
+				for (int i = -radius; i <= radius; ++i) {
+					int range_diff = abs(i);
+					weight_sum += range_gaussian_table[range_diff];
+					weight_pixel_sum += range_gaussian_table[range_diff] * mid[(y+i)*line_stride+(x*bpp)+d];
+				}
+
+				const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
+				image_out[x*line_stride+y*bpp+d] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
+			}
+		}
+	}
+
 }
 
 void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
@@ -79,7 +90,7 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 	const int work_w = w-2*r;
 	const int work_h = h-2*r;
 	const size_t block_dim[2] = {32, 16};
-	const size_t grid_dim[2] = {w, h};
+	const size_t grid_dim[2] = {CeilDiv(work_w, 32)*32, CeilDiv(work_h, 16)*16};
 
 	device_manager->Call(
 		kernel,
