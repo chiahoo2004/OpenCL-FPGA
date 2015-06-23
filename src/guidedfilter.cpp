@@ -29,53 +29,149 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 	CHECK_NE(w, 0) << "Width might not be 0";
 	CHECK_NE(h, 0) << "Height might not be 0";
 
+	unique_ptr<float[]> a_r(new float[w*h*bpp]);
+	unique_ptr<float[]> a_g(new float[w*h*bpp]);
+	unique_ptr<float[]> a_b(new float[w*h*bpp]);
+	unique_ptr<float[]> b(new float[w*h*bpp]);
+
 	const int line_stride = bpp*w;
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = offset; x < w-offset; ++x) {
+			float sum_g[3]={};
+			float square_g[3]={};
+			float sum_in[3]={};
+			float sum[3][3]={{0,0,0},{0,0,0},{0,0,0}};
+			float corr_rg = 0;
+			float corr_rb = 0;
+			float corr_gb = 0;
+			float mean_g[3]={};
+			float squaremean_g[3]={};
+			float mean_in[3]={};
+			float var_I_rr = 0;
+			float var_I_rg = 0;
+			float var_I_rb = 0;
+			float var_I_gg = 0;
+			float var_I_gb = 0;
+			float var_I_bb = 0;
+			float a_temp[3][3]={}; 
+			float b_temp[3]={};
+
 			const int base = y*line_stride + x*bpp;
 			for (int d = 0; d < bpp; ++d) {
-				float sum_g = 0;
-				float square_g = 0;
-				float sum_in = 0;
-				float sum = 0;
 				for (int dy = -offset; dy <= offset; dy++) {
 					for(int dx = -offset; dx <= offset; dx++) {
+						const int neighbor_offset_pixel = dy*line_stride+dx*bpp;
 						const int neighbor_offset = dy*line_stride+dx*bpp+d;
 						const float pixel_I = I[base+neighbor_offset];
 						const float pixel_in = image_in[base+neighbor_offset];
-						sum_g += pixel_I;
-						square_g += pixel_I * pixel_I;
-						sum_in += pixel_in;
-						sum += pixel_in * pixel_I;
+
+						sum_g[d] += pixel_I;
+						square_g[d] += pixel_I * pixel_I;
+						sum_in[d] += pixel_in; 
+						sum[d][0] += I[base+neighbor_offset_pixel+0] * pixel_in;
+						sum[d][1] += I[base+neighbor_offset_pixel+1] * pixel_in;
+						sum[d][2] += I[base+neighbor_offset_pixel+2] * pixel_in;
+						if (d==0) {
+							corr_rg += I[base+neighbor_offset_pixel+0] * I[base+neighbor_offset_pixel+1];
+							corr_rb += I[base+neighbor_offset_pixel+0] * I[base+neighbor_offset_pixel+2];
+							corr_gb += I[base+neighbor_offset_pixel+1] * I[base+neighbor_offset_pixel+2];
+						}
 					}
 				}
+				mean_g[d] = sum_g[d] * inv_size;
+				squaremean_g[d] = square_g[d] * inv_size;
+				mean_in[d] = sum_in[d] * inv_size;
+			}
 
-				float mean_g = sum_g * inv_size;
-				float squaremean_g = square_g * inv_size;
-				float mean_in = sum_in * inv_size;
-				float variance_g = squaremean_g - mean_g * mean_g;
+			corr_rg *= inv_size; 
+			corr_rb *= inv_size; 
+			corr_gb *= inv_size; 
+			var_I_rr = squaremean_g[0] - mean_g[0] * mean_g[0];
+			var_I_rg = corr_rg - mean_g[0] * mean_g[1];
+			var_I_rb = corr_rb - mean_g[0] * mean_g[2];
+			var_I_gg = squaremean_g[1] - mean_g[1] * mean_g[1];
+			var_I_gb = corr_gb - mean_g[1] * mean_g[2];
+			var_I_bb = squaremean_g[2] - mean_g[2] * mean_g[2];
 
-				float a_temp = (sum*inv_size - mean_g*mean_in) / (variance_g+epsilon);
-				float b_temp = mean_in - a_temp*mean_g;
-				a[base+d] = a_temp;
-				b[base+d] = b_temp;
+			float m[3][3];
+			m[0][0] = var_I_rr + epsilon;
+			m[0][1] = var_I_rg;
+			m[0][2] = var_I_rb;
+			m[1][0] = var_I_rg;
+			m[1][1] = var_I_gg + epsilon;
+			m[1][2] = var_I_gb;
+			m[2][0] = var_I_rb;
+			m[2][1] = var_I_gb;
+			m[2][2] = var_I_bb + epsilon; 
+
+			// computes the inverse of a matrix m
+			float det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
+			             m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+			             m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+
+			float invdet = 1 / det;
+			float minv[3][3]; // inverse of matrix m
+			minv[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * invdet;
+			minv[0][1] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) * invdet;
+			minv[0][2] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) * invdet;
+			minv[1][0] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) * invdet;
+			minv[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * invdet;
+			minv[1][2] = (m[1][0] * m[0][2] - m[0][0] * m[1][2]) * invdet;
+			minv[2][0] = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * invdet;
+			minv[2][1] = (m[2][0] * m[0][1] - m[0][0] * m[2][1]) * invdet;
+			minv[2][2] = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * invdet;
+
+			for (int d = 0; d < bpp; ++d) {
+				a_temp[d][0]=minv[0][0]*(sum[d][0]-size*mean_g[0]*mean_in[d])+minv[0][1]*(sum[d][0]-size*mean_g[0]*mean_in[d])+minv[0][2]*(sum[d][0]-size*mean_g[0]*mean_in[d]);
+				a_temp[d][1]=minv[1][0]*(sum[d][1]-size*mean_g[1]*mean_in[d])+minv[1][1]*(sum[d][1]-size*mean_g[1]*mean_in[d])+minv[1][2]*(sum[d][1]-size*mean_g[1]*mean_in[d]);
+				a_temp[d][2]=minv[2][0]*(sum[d][2]-size*mean_g[2]*mean_in[d])+minv[2][1]*(sum[d][2]-size*mean_g[2]*mean_in[d])+minv[2][2]*(sum[d][2]-size*mean_g[2]*mean_in[d]);
+				a_temp[d][0]*=inv_size;
+				a_temp[d][1]*=inv_size;
+				a_temp[d][2]*=inv_size;
+			}
+			float au = 0;
+			for (int d = 0; d < bpp; ++d) {
+				au = 0;
+				au += a_temp[d][0]*mean_g[0]+a_temp[d][1]*mean_g[1]+a_temp[d][2]*mean_g[2];
+				b_temp[d] = mean_in[d] - au; 
+			}
+			for (int d = 0; d < bpp; ++d) {
+				a_r[base+d] = a_temp[d][0];
+				a_g[base+d] = a_temp[d][1];
+				a_b[base+d] = a_temp[d][2];
+				b[base+d] = b_temp[d];
 			}
 		}
 	}
 
+
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = offset; x < w-offset; ++x) {
 			const int base = y*line_stride + x*bpp;
 			for (int d = 0; d < bpp; ++d) {
-				float sum_a = 0;
+				int pixel_output = 0;
+				float sum_a[3]={};
 				float sum_b = 0;
-				for (int dy = -offset; dy <= offset; dy++) {
-					for(int dx = -offset; dx <= offset; dx++) {
-						sum_a += a[base+dy*line_stride+dx*bpp+d];
-						sum_b += b[base+dy*line_stride+dx*bpp+d];
+				float mean_a[3]={};
+				float mean_b = 0;
+				for (int dx = -offset; dx <= offset; dx++) {
+					for(int dy = -offset; dy <= offset; dy++) {
+						const int neighbor_offset_pixel = dy*line_stride+dx*bpp;
+						const int neighbor_offset = dy*line_stride+dx*bpp+d;
+						const float pixel_I = I[base+neighbor_offset];
+						const float pixel_in = image_in[base+neighbor_offset];
+						sum_a[0] += a_r[base+neighbor_offset];
+						sum_a[1] += a_g[base+neighbor_offset];
+						sum_a[2] += a_b[base+neighbor_offset];
+						sum_b += b[base+neighbor_offset];
 					}
-				}
-				image_out[base+d] = (sum_a*I[base+d]+sum_b) * inv_size;
+				}	
+				mean_a[0] = sum_a[0] * inv_size;
+				mean_a[1] = sum_a[1] * inv_size;
+				mean_a[2] = sum_a[2] * inv_size;
+				mean_b = sum_b * inv_size;
+				pixel_output = mean_a[0]*I[base+0]+mean_a[1]*I[base+1]+mean_a[2]*I[base+2]+mean_b;
+				image_out[base+d] = (pixel_output&0xffffff00)? ~(pixel_output>>24): pixel_output;
 			}
 		}
 	}
