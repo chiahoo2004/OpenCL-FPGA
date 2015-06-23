@@ -16,6 +16,9 @@ __kernel void gaussian1d(
 		x += radius;
 		y += radius;
 
+		int w = work_w + 2*radius;
+		int h = work_h + 2*radius;
+
 		for (int d=0;d<bpp;d++) {
 			float weight_sum = 0.0f;
 			float weight_pixel_sum = 0.0f;
@@ -23,11 +26,11 @@ __kernel void gaussian1d(
 			for (int i = -radius; i <= radius; ++i) {
 				int range_diff = abs(i);
 				weight_sum += range_gaussian_table[range_diff];
-				weight_pixel_sum += range_gaussian_table[range_diff] * in[(y+i)*line_stride+(x*bpp)+d];
+				weight_pixel_sum += range_gaussian_table[range_diff] * in[(y+i)*w+x+d*w*h];
 			}
 
 			const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
-			out[x*line_stride+y*bpp+d] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
+			out[x*w+y+d*w*h] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
 		}
 	}
 }

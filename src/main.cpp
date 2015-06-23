@@ -82,8 +82,8 @@ int main(int argc, char** argv)
 	// Filter, fix it at compile time now
 	Filter *filter;
 //	FilterMethod filter_method = FilterMethod::Bilateral;
-//	FilterMethod filter_method = FilterMethod::Gaussian;
-	FilterMethod filter_method = FilterMethod::Guided;
+	FilterMethod filter_method = FilterMethod::Gaussian;
+//	FilterMethod filter_method = FilterMethod::Guided;
 	switch (filter_method) {
 		case FilterMethod::Gaussian: {
 			GaussianFilter *gf = new GaussianFilter;
@@ -118,10 +118,10 @@ int main(int argc, char** argv)
 	
 	// OpenCL
 //	device_manager->GetKernel("bilateral.cl", "bilateral"); // preload the kernel
-//	device_manager->GetKernel("gaussian1d.cl", "gaussian1d"); // preload the kernel
+	device_manager->GetKernel("gaussian1d.cl", "gaussian1d"); // preload the kernel
 //	device_manager->GetKernel("gaussian1dtwo.cl", "gaussian1dtwo");
-	device_manager->GetKernel("guided.cl", "guided");
-	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
+//	device_manager->GetKernel("guided.cl", "guided");
+//	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
 	tic = GetNow();
 //	filter->Run_ocl(original_float.get(), enhanced_float.get());
 	toc = GetNow();

@@ -26,6 +26,16 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 	unique_ptr<float[]> mid(new float[w*h*bpp]);
 	const int line_stride = bpp*w;
 
+	unique_ptr<float[]> image_rgb_in(new float[w*h*bpp]);
+	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_rgb_in[y*w+x+d*w*h]=image_in[y*line_stride+x*bpp+d];
+			}
+		}
+	}
+
 	for (int y = radius; y < h-radius; ++y) {
 		for (int x = radius; x < w-radius; ++x) {
 			for (int d = 0; d < bpp; ++d) {
@@ -35,11 +45,11 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 				for (int i = -radius; i <= radius; ++i) {
 					int range_diff = abs(i);
 					weight_sum += range_gaussian_table[range_diff];
-					weight_pixel_sum += range_gaussian_table[range_diff] * image_in[(y+i)*line_stride+(x*bpp)+d];
+					weight_pixel_sum += range_gaussian_table[range_diff] * image_rgb_in[(y+i)*w+x+d*w*h];
 				}
 
 				const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
-				mid[x*line_stride+y*bpp+d] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
+				mid[x*w+y+d*w*h] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
 			}
 		}
 	}
@@ -53,11 +63,19 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 				for (int i = -radius; i <= radius; ++i) {
 					int range_diff = abs(i);
 					weight_sum += range_gaussian_table[range_diff];
-					weight_pixel_sum += range_gaussian_table[range_diff] * mid[(y+i)*line_stride+(x*bpp)+d];
+					weight_pixel_sum += range_gaussian_table[range_diff] * mid[(y+i)*w+x+d*w*h];
 				}
 
 				const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
-				image_out[x*line_stride+y*bpp+d] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
+				image_rgb_out[x*w+y+d*w*h] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
+			}
+		}
+	}
+	
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_out[y*line_stride+x*bpp+d]=image_rgb_out[y*w+x+d*w*h];
 			}
 		}
 	}
@@ -76,6 +94,16 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 		LOG(WARNING) << "No work to do";
 		return;
 	}
+
+	unique_ptr<float[]> image_rgb_in(new float[w*h*bpp]);
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_rgb_in[y*w+x+d*w*h]=image_in[y*line_stride+x*bpp+d];
+			}
+		}
+	}
+
 	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, 2*r+1);
 	cl_kernel kernel = device_manager->GetKernel("gaussian1d.cl", "gaussian1d");
 
@@ -85,7 +113,7 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 	auto d_in = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 	auto d_out = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 	device_manager->WriteMemory(range_gaussian_table.get(), *d_range_gaussian_table.get(), (2*r+1)*sizeof(float));
-	device_manager->WriteMemory(image_in, *d_in.get(), w*h*bpp*sizeof(float));
+	device_manager->WriteMemory(image_rgb_in.get(), *d_in.get(), w*h*bpp*sizeof(float));
 
 	const int work_w = w-2*r;
 	const int work_h = h-2*r;
@@ -125,6 +153,14 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 		2, grid_dim, nullptr, block_dim
 	);
 
-	device_manager->ReadMemory(image_out, *d_out.get(), w*h*bpp*sizeof(float));
+	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
+	device_manager->ReadMemory(image_rgb_out.get(), *d_out.get(), w*h*bpp*sizeof(float));	
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_out[y*line_stride+x*bpp+d]=image_rgb_out[y*w+x+d*w*h];
+			}
+		}
+	}
 
 }
