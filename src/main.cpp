@@ -119,7 +119,6 @@ int main(int argc, char** argv)
 	// OpenCL
 //	device_manager->GetKernel("bilateral.cl", "bilateral"); // preload the kernel
 	device_manager->GetKernel("gaussian1d.cl", "gaussian1d"); // preload the kernel
-//	device_manager->GetKernel("gaussian1dtwo.cl", "gaussian1dtwo");
 //	device_manager->GetKernel("guided.cl", "guided");
 //	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
 	tic = GetNow();
