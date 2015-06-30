@@ -35,6 +35,19 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 	unique_ptr<float[]> b(new float[w*h*bpp]);
 
 	const int line_stride = bpp*w;
+
+	unique_ptr<float[]> image_rgb_in(new float[w*h*bpp]);
+	unique_ptr<float[]> I_rgb(new float[w*h*bpp]);
+	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_rgb_in[y*w+x+d*w*h]=image_in[y*line_stride+x*bpp+d];
+				I_rgb[y*w+x+d*w*h]=image_in[y*line_stride+x*bpp+d];
+			}
+		}
+	}
+
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = offset; x < w-offset; ++x) {
 			float sum_g[3]={};
@@ -56,25 +69,25 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 			float a_temp[3][3]={}; 
 			float b_temp[3]={};
 
-			const int base = y*line_stride + x*bpp;
+			const int base = y*w + x;
 			for (int d = 0; d < bpp; ++d) {
 				for (int dy = -offset; dy <= offset; dy++) {
 					for(int dx = -offset; dx <= offset; dx++) {
-						const int neighbor_offset_pixel = dy*line_stride+dx*bpp;
-						const int neighbor_offset = dy*line_stride+dx*bpp+d;
-						const float pixel_I = I[base+neighbor_offset];
-						const float pixel_in = image_in[base+neighbor_offset];
+						const int neighbor_offset_pixel = dy*w+dx;
+						const int neighbor_offset = dy*w+dx+d*w*h;
+						const float pixel_I = I_rgb[base+neighbor_offset];
+						const float pixel_in = image_rgb_in[base+neighbor_offset];
 
 						sum_g[d] += pixel_I;
 						square_g[d] += pixel_I * pixel_I;
 						sum_in[d] += pixel_in; 
-						sum[d][0] += I[base+neighbor_offset_pixel+0] * pixel_in;
-						sum[d][1] += I[base+neighbor_offset_pixel+1] * pixel_in;
-						sum[d][2] += I[base+neighbor_offset_pixel+2] * pixel_in;
+						sum[d][0] += I_rgb[base+neighbor_offset_pixel+0*w*h] * pixel_in;
+						sum[d][1] += I_rgb[base+neighbor_offset_pixel+1*w*h] * pixel_in;
+						sum[d][2] += I_rgb[base+neighbor_offset_pixel+2*w*h] * pixel_in;
 						if (d==0) {
-							corr_rg += I[base+neighbor_offset_pixel+0] * I[base+neighbor_offset_pixel+1];
-							corr_rb += I[base+neighbor_offset_pixel+0] * I[base+neighbor_offset_pixel+2];
-							corr_gb += I[base+neighbor_offset_pixel+1] * I[base+neighbor_offset_pixel+2];
+							corr_rg += I_rgb[base+neighbor_offset_pixel+0*w*h] * I_rgb[base+neighbor_offset_pixel+1*w*h];
+							corr_rb += I_rgb[base+neighbor_offset_pixel+0*w*h] * I_rgb[base+neighbor_offset_pixel+2*w*h];
+							corr_gb += I_rgb[base+neighbor_offset_pixel+1*w*h] * I_rgb[base+neighbor_offset_pixel+2*w*h];
 						}
 					}
 				}
@@ -136,10 +149,10 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 				b_temp[d] = mean_in[d] - au; 
 			}
 			for (int d = 0; d < bpp; ++d) {
-				a_r[base+d] = a_temp[d][0];
-				a_g[base+d] = a_temp[d][1];
-				a_b[base+d] = a_temp[d][2];
-				b[base+d] = b_temp[d];
+				a_r[base+d*w*h] = a_temp[d][0];
+				a_g[base+d*w*h] = a_temp[d][1];
+				a_b[base+d*w*h] = a_temp[d][2];
+				b[base+d*w*h] = b_temp[d];
 			}
 		}
 	}
@@ -147,7 +160,7 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = offset; x < w-offset; ++x) {
-			const int base = y*line_stride + x*bpp;
+			const int base = y*w + x;
 			for (int d = 0; d < bpp; ++d) {
 				int pixel_output = 0;
 				float sum_a[3]={};
@@ -156,10 +169,10 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 				float mean_b = 0;
 				for (int dx = -offset; dx <= offset; dx++) {
 					for(int dy = -offset; dy <= offset; dy++) {
-						const int neighbor_offset_pixel = dy*line_stride+dx*bpp;
-						const int neighbor_offset = dy*line_stride+dx*bpp+d;
-						const float pixel_I = I[base+neighbor_offset];
-						const float pixel_in = image_in[base+neighbor_offset];
+						const int neighbor_offset_pixel = dy*w+dx;
+						const int neighbor_offset = dy*w+dx+d*w*h;
+						const float pixel_I = I_rgb[base+neighbor_offset];
+						const float pixel_in = image_rgb_in[base+neighbor_offset];
 						sum_a[0] += a_r[base+neighbor_offset];
 						sum_a[1] += a_g[base+neighbor_offset];
 						sum_a[2] += a_b[base+neighbor_offset];
@@ -170,8 +183,16 @@ void GuidedFilter::Run_cxx(const float *image_in, float* image_out)
 				mean_a[1] = sum_a[1] * inv_size;
 				mean_a[2] = sum_a[2] * inv_size;
 				mean_b = sum_b * inv_size;
-				pixel_output = mean_a[0]*I[base+0]+mean_a[1]*I[base+1]+mean_a[2]*I[base+2]+mean_b;
-				image_out[base+d] = (pixel_output&0xffffff00)? ~(pixel_output>>24): pixel_output;
+				pixel_output = mean_a[0]*I_rgb[base+0*w*h]+mean_a[1]*I_rgb[base+1*w*h]+mean_a[2]*I_rgb[base+2*w*h]+mean_b;
+				image_rgb_out[base+d*w*h] = (pixel_output&0xffffff00)? ~(pixel_output>>24): pixel_output;
+			}
+		}
+	}
+
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_out[y*line_stride+x*bpp+d]=image_rgb_out[y*w+x+d*w*h];
 			}
 		}
 	}
@@ -193,6 +214,16 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 		LOG(WARNING) << "No work to do";
 		return;
 	}
+
+	unique_ptr<float[]> image_rgb_in(new float[w*h*bpp]);
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_rgb_in[y*w+x+d*w*h]=image_in[y*line_stride+x*bpp+d];
+			}
+		}
+	}
+
 //	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, r+1);
 	cl_kernel kernel1 = device_manager->GetKernel("guided.cl", "guided");
 
@@ -206,8 +237,8 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 	auto d_in = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 	auto d_out = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 //	device_manager->WriteMemory(range_gaussian_table.get(), *d_range_gaussian_table.get(), (r+1)*sizeof(float));
-	device_manager->WriteMemory(image_in, *d_in.get(), w*h*bpp*sizeof(float));
-	device_manager->WriteMemory(image_in, *d_I.get(), w*h*bpp*sizeof(float));
+	device_manager->WriteMemory(image_rgb_in.get(), *d_in.get(), w*h*bpp*sizeof(float));
+	device_manager->WriteMemory(image_rgb_in.get(), *d_I.get(), w*h*bpp*sizeof(float));
 
 	const int work_w = w-2*r;
 	const int work_h = h-2*r;
@@ -256,6 +287,13 @@ void GuidedFilter::Run_ocl(const float *image_in, float* image_out)
 		2, grid_dim, nullptr, block_dim
 	);
 
-	device_manager->ReadMemory(image_out, *d_out.get(), w*h*bpp*sizeof(float));
-//	device_manager->ReadMemory(image_out, *d_in.get(), w*h*bpp*sizeof(float));
+	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
+	device_manager->ReadMemory(image_rgb_out.get(), *d_out.get(), w*h*bpp*sizeof(float));	
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_out[y*line_stride+x*bpp+d]=image_rgb_out[y*w+x+d*w*h];
+			}
+		}
+	}
 }

@@ -24,6 +24,9 @@ __kernel void guidedtwo(
 		x += offset;
 		y += offset;
 
+		int w = work_w + 2*offset;
+		int h = work_h + 2*offset;
+
 		for (int d = 0; d < bpp; ++d) {
 			int pixel_output = 0;
 
@@ -34,15 +37,10 @@ __kernel void guidedtwo(
 
 			for (int i = -offset; i <= offset; i++) {
 				for(int j = -offset; j <= offset; j++) {
-					sum_a[0] += a_r[(y+j)*line_stride+(x+i)*bpp+d];
-					sum_a[1] += a_g[(y+j)*line_stride+(x+i)*bpp+d];
-					sum_a[2] += a_b[(y+j)*line_stride+(x+i)*bpp+d];
-					sum_b += b[(y+j)*line_stride+(x+i)*bpp+d];
-
-					#ifdef DEBUG2
-					DLOG(INFO)<<"sum_a += "<<sum_a<<endl;
-					DLOG(INFO)<<"sum_b += "<<sum_b<<endl;
-					#endif
+					sum_a[0] += a_r[(y+j)*w+(x+i)+d*w*h];
+					sum_a[1] += a_g[(y+j)*w+(x+i)+d*w*h];
+					sum_a[2] += a_b[(y+j)*w+(x+i)+d*w*h];
+					sum_b += b[(y+j)*w+(x+i)+d*w*h];
 				}
 			}	
 
@@ -50,23 +48,10 @@ __kernel void guidedtwo(
 			mean_a[1] = sum_a[1] / size;
 			mean_a[2] = sum_a[2] / size;
 			mean_b = sum_b / size;
-			#ifdef DEBUG2
-			DLOG(INFO)<<"mean_a["<<y*line_stride+x*bpp+d<<"] = "<<mean_a<<endl;
-			DLOG(INFO)<<"mean_b["<<y*line_stride+x*bpp+d<<"] = "<<mean_b<<endl;
-			#endif
 
-			pixel_output = mean_a[0]*I[y*line_stride+x*bpp+0]+mean_a[1]*I[y*line_stride+x*bpp+1]+mean_a[2]*I[y*line_stride+x*bpp+2]+mean_b;
-			out[y*line_stride+x*bpp+d] = (pixel_output&0xffffff00)? ~(pixel_output>>24): pixel_output;
+			pixel_output = mean_a[0]*I[y*w+x+ 0*w*h]+mean_a[1]*I[y*w+x+ 1*w*h]+mean_a[2]*I[y*w+x+ 2*w*h]+mean_b;
+			out[y*w+x+d*w*h] = (pixel_output&0xffffff00)? ~(pixel_output>>24): pixel_output;
 		}
 	}
 
-//	out[y*line_stride+x*bpp+d] = in[y*line_stride+x*bpp+d];
 }
-
-
-
-
-
-
-
-

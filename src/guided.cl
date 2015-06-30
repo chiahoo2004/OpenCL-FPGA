@@ -24,6 +24,9 @@ __kernel void guided(
 		x += offset;
 		y += offset;
 
+		int w = work_w + 2*offset;
+		int h = work_h + 2*offset;
+
 		float sum_g[3]={};
 		float square_g[3]={};
 		float sum_in[3]={};
@@ -53,25 +56,20 @@ __kernel void guided(
 			for (int a = -offset; a <= offset; a++) {
 				for(int b = -offset; b <= offset; b++) {
 
-					sum_g[d] += I[(y+a)*line_stride+(x*bpp+d+b*bpp)];
+					sum_g[d] += I[(y+a)*w+(x+b)+d*w*h];
 					
-					square_g[d] += I[(y+a)*line_stride+(x*bpp+d+b*bpp)] * I[(y+a)*line_stride+(x*bpp+d+b*bpp)];
-					sum_in[d] += in[(y+a)*line_stride+(x*bpp+d+b*bpp)]; 
+					square_g[d] += I[(y+a)*w+(x+b)+d*w*h] * I[(y+a)*w+(x+b)+d*w*h];
+					sum_in[d] += in[(y+a)*w+(x+b)+d*w*h]; 
 					
-					sum[d][0] += I[(y+a)*line_stride+(x*bpp+ 0 +b*bpp)] * in[(y+a)*line_stride+(x*bpp+d+b*bpp)];
-					sum[d][1] += I[(y+a)*line_stride+(x*bpp+ 1 +b*bpp)] * in[(y+a)*line_stride+(x*bpp+d+b*bpp)];
-					sum[d][2] += I[(y+a)*line_stride+(x*bpp+ 2 +b*bpp)] * in[(y+a)*line_stride+(x*bpp+d+b*bpp)];
+					sum[d][0] += I[(y+a)*w+(x+b)+ 0*w*h] * in[(y+a)*w+(x+b)+d*w*h];
+					sum[d][1] += I[(y+a)*w+(x+b)+ 1*w*h] * in[(y+a)*w+(x+b)+d*w*h];
+					sum[d][2] += I[(y+a)*w+(x+b)+ 2*w*h] * in[(y+a)*w+(x+b)+d*w*h];
 
 					if (d==0) {
-						corr_rg += I[(y+a)*line_stride+(x*bpp+ 0 +b*bpp)] * I[(y+a)*line_stride+(x*bpp+ 1 +b*bpp)];
-						corr_rb += I[(y+a)*line_stride+(x*bpp+ 0 +b*bpp)] * I[(y+a)*line_stride+(x*bpp+ 2 +b*bpp)];
-						corr_gb += I[(y+a)*line_stride+(x*bpp+ 1 +b*bpp)] * I[(y+a)*line_stride+(x*bpp+ 2 +b*bpp)];
+						corr_rg += I[(y+a)*w+(x+b)+ 0*w*h] * I[(y+a)*w+(x+b)+ 1*w*h];
+						corr_rb += I[(y+a)*w+(x+b)+ 0*w*h] * I[(y+a)*w+(x+b)+ 2*w*h];
+						corr_gb += I[(y+a)*w+(x+b)+ 1*w*h] * I[(y+a)*w+(x+b)+ 2*w*h];
 					}
-
-					#ifdef DEBUG1
-					DLOG(INFO)<<"I["<<(y+a)*line_stride+(x*bpp+d+b*bpp)<<"] = "<<I[(y+a)*line_stride+(x*bpp+d+b*bpp)]<<endl;
-					DLOG(INFO)<<"image["<<(y+a)*line_stride+(x*bpp+d+b*bpp)<<"] = "<<in[(y+a)*line_stride+(x*bpp+d+b*bpp)]<<endl;
-					#endif
 
 				}
 			}
@@ -149,11 +147,11 @@ __kernel void guided(
 		for (int d = 0; d < bpp; ++d) {
 			
 
-			a_r[y*line_stride+x*bpp+d] = a_temp[d][0];
-			a_g[y*line_stride+x*bpp+d] = a_temp[d][1];
-			a_b[y*line_stride+x*bpp+d] = a_temp[d][2];
+			a_r[y*w+x+d*w*h] = a_temp[d][0];
+			a_g[y*w+x+d*w*h] = a_temp[d][1];
+			a_b[y*w+x+d*w*h] = a_temp[d][2];
 
-			b[y*line_stride+x*bpp+d] = b_temp[d];
+			b[y*w+x+d*w*h] = b_temp[d];
 
 		}
 	
