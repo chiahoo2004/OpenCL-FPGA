@@ -81,8 +81,8 @@ int main(int argc, char** argv)
 
 	// Filter, fix it at compile time now
 	Filter *filter;
-//	FilterMethod filter_method = FilterMethod::Bilateral;
-	FilterMethod filter_method = FilterMethod::Gaussian;
+	FilterMethod filter_method = FilterMethod::Bilateral;
+//	FilterMethod filter_method = FilterMethod::Gaussian;
 //	FilterMethod filter_method = FilterMethod::Guided;
 	switch (filter_method) {
 		case FilterMethod::Gaussian: {
@@ -117,8 +117,8 @@ int main(int argc, char** argv)
 	elapsed_cxx = DiffUsInLongLong(tic, toc);
 	
 	// OpenCL
-//	device_manager->GetKernel("bilateral.cl", "bilateral"); // preload the kernel
-	device_manager->GetKernel("gaussian1d.cl", "gaussian1d"); // preload the kernel
+	device_manager->GetKernel("bilateral.cl", "bilateral"); // preload the kernel
+//	device_manager->GetKernel("gaussian1d.cl", "gaussian1d"); // preload the kernel
 //	device_manager->GetKernel("gaussian1dtwo.cl", "gaussian1dtwo");
 //	device_manager->GetKernel("guided.cl", "guided");
 //	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
