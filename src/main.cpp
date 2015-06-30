@@ -123,7 +123,7 @@ int main(int argc, char** argv)
 //	device_manager->GetKernel("guided.cl", "guided");
 //	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
 	tic = GetNow();
-	filter->Run_ocl(original_float.get(), enhanced_float.get());
+//	filter->Run_ocl(original_float.get(), enhanced_float.get());
 	toc = GetNow();
 	elapsed_ocl = DiffUsInLongLong(tic, toc);
 

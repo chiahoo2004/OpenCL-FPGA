@@ -6,6 +6,7 @@
 #include <glog/logging.h>
 #include <cmath>
 #include <memory>
+#include "timer.h"
 using namespace std;
 
 void BilateralFilter::SetDimension(const int w, const int h, const int channel)
@@ -102,6 +103,10 @@ void BilateralFilter::Run_ocl(const float *image_in, float *image_out)
 		}
 	}
 
+	Clock tic, toc;
+	long long elapsed;
+	tic = GetNow();
+
 	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, r+1);
 	auto color_gaussian_table = GenerateGaussianTable(color_sigma, 256);
 	cl_kernel kernel = device_manager->GetKernel("bilateral.cl", "bilateral");
@@ -134,6 +139,10 @@ void BilateralFilter::Run_ocl(const float *image_in, float *image_out)
 		},
 		2, grid_dim, nullptr, block_dim
 	);
+	
+	toc = GetNow();
+	elapsed = DiffUsInLongLong(tic, toc);
+	LOG(INFO) << "Time: " << elapsed << "us";
 	
 	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
 	device_manager->ReadMemory(image_rgb_out.get(), *d_out.get(), w*h*bpp*sizeof(float));	

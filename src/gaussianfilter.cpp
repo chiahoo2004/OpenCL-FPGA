@@ -6,6 +6,7 @@
 #include <glog/logging.h>
 #include <cmath>
 #include <memory>
+#include "timer.h"
 using namespace std;
 
 void GaussianFilter::SetDimension(const int w, const int h, const int channel)
@@ -45,7 +46,7 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 				for (int i = -radius; i <= radius; ++i) {
 					int range_diff = abs(i);
 					weight_sum += range_gaussian_table[range_diff];
-					weight_pixel_sum += range_gaussian_table[range_diff] * image_rgb_in[(y+i)*w+x+d*w*h];
+					weight_pixel_sum += range_gaussian_table[range_diff] * image_rgb_in[(y)*w+(x+i)+d*w*h];
 				}
 
 				const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
@@ -63,7 +64,7 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 				for (int i = -radius; i <= radius; ++i) {
 					int range_diff = abs(i);
 					weight_sum += range_gaussian_table[range_diff];
-					weight_pixel_sum += range_gaussian_table[range_diff] * mid[(y+i)*w+x+d*w*h];
+					weight_pixel_sum += range_gaussian_table[range_diff] * mid[(y)*w+(x+i)+d*w*h];
 				}
 
 				const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
@@ -103,6 +104,10 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 			}
 		}
 	}
+
+	Clock tic, toc;
+	long long elapsed;
+	tic = GetNow();
 
 	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, 2*r+1);
 	cl_kernel kernel = device_manager->GetKernel("gaussian1d.cl", "gaussian1d");
@@ -152,6 +157,12 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 		},
 		2, grid_dim, nullptr, block_dim
 	);
+
+
+	toc = GetNow();
+	elapsed = DiffUsInLongLong(tic, toc);
+	LOG(INFO) << "Kernel Time: " << elapsed << "us";
+
 
 	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
 	device_manager->ReadMemory(image_rgb_out.get(), *d_out.get(), w*h*bpp*sizeof(float));	

@@ -26,7 +26,7 @@ __kernel void gaussian1d(
 			for (int i = -radius; i <= radius; ++i) {
 				int range_diff = abs(i);
 				weight_sum += range_gaussian_table[range_diff];
-				weight_pixel_sum += range_gaussian_table[range_diff] * in[(y+i)*w+x+d*w*h];
+				weight_pixel_sum += range_gaussian_table[range_diff] * in[(y)*w+(x+i)+d*w*h];
 			}
 
 			const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
