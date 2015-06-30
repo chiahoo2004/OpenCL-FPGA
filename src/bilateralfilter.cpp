@@ -29,32 +29,51 @@ void BilateralFilter::Run_cxx(const float *image_in, float *image_out)
 	CHECK_NE(h, 0) << "Height might not be 0";
 	
 	const int line_stride = bpp*w;
+
+	unique_ptr<float[]> image_rgb_in(new float[w*h*bpp]);
+	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_rgb_in[y*w+x+d*w*h]=image_in[y*line_stride+x*bpp+d];
+			}
+		}
+	}
+
 	unique_ptr<float[]> weight_pixel_sum(new float[bpp]);
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = offset; x < w-offset; ++x) {
 			float weight_sum = 0.0f;
-			const float *cur_in = image_in+y*line_stride+x*bpp;
-			float *cur_out = image_out+y*line_stride+x*bpp;
+			const float *cur_in = image_rgb_in.get()+y*w+x;
+			float *cur_out = image_rgb_out.get()+y*w+x;
 			for (int dy = -offset; dy <= offset; dy++) {
 				for(int dx = -offset; dx <= offset; dx++) {
-					const float *neighbor_in = cur_in+dy*line_stride+dx*bpp;
+					const float *neighbor_in = cur_in+dy*w+dx;
 					float spatial = exp( (dx*dx+dy*dy) * spacial_sigma_inverse);
 					float range_diff = 0;
 					for (int d = 0; d < bpp; ++d) {
-						float diff_1d = cur_in[d] - neighbor_in[d];
+						float diff_1d = cur_in[d*w*h] - neighbor_in[d*w*h];
 						range_diff += diff_1d * diff_1d;
 					}
 					float range = exp(range_diff * color_sigma_inverse);
 					float weight = range * spatial;
 					weight_sum += weight;
 					for (int d = 0; d < bpp; ++d) {
-						weight_pixel_sum[d] += weight * neighbor_in[d];
+						weight_pixel_sum[d] += weight * neighbor_in[d*w*h];
 					}
 				}
 			}
 			for (int d = 0; d < bpp; ++d) {
-				cur_out[d] = ClampToUint8((int)(weight_pixel_sum[d] / weight_sum + 0.5f));
+				cur_out[d*w*h] = ClampToUint8((int)(weight_pixel_sum[d] / weight_sum + 0.5f));
 				weight_pixel_sum[d] = 0;
+			}
+		}
+	}
+
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_out[y*line_stride+x*bpp+d]=image_rgb_out[y*w+x+d*w*h];
 			}
 		}
 	}
@@ -73,6 +92,16 @@ void BilateralFilter::Run_ocl(const float *image_in, float *image_out)
 		LOG(WARNING) << "No work to do";
 		return;
 	}
+
+	unique_ptr<float[]> image_rgb_in(new float[w*h*bpp]);
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_rgb_in[y*w+x+d*w*h]=image_in[y*line_stride+x*bpp+d];
+			}
+		}
+	}
+
 	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, r+1);
 	auto color_gaussian_table = GenerateGaussianTable(color_sigma, 256);
 	cl_kernel kernel = device_manager->GetKernel("bilateral.cl", "bilateral");
@@ -83,7 +112,7 @@ void BilateralFilter::Run_ocl(const float *image_in, float *image_out)
 	auto d_out = device_manager->AllocateMemory(CL_MEM_READ_WRITE, w*h*bpp*sizeof(float));
 	device_manager->WriteMemory(range_gaussian_table.get(), *d_range_gaussian_table.get(), (r+1)*sizeof(float));
 	device_manager->WriteMemory(color_gaussian_table.get(), *d_color_gaussian_table.get(), 256*sizeof(float));
-	device_manager->WriteMemory(image_in, *d_in.get(), w*h*bpp*sizeof(float));
+	device_manager->WriteMemory(image_rgb_in.get(), *d_in.get(), w*h*bpp*sizeof(float));
 	const int work_w = w-2*r;
 	const int work_h = h-2*r;
 	const size_t block_dim[2] = {32, 16};
@@ -105,5 +134,15 @@ void BilateralFilter::Run_ocl(const float *image_in, float *image_out)
 		},
 		2, grid_dim, nullptr, block_dim
 	);
-	device_manager->ReadMemory(image_out, *d_out.get(), w*h*bpp*sizeof(float));
+	
+	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
+	device_manager->ReadMemory(image_rgb_out.get(), *d_out.get(), w*h*bpp*sizeof(float));	
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			for (int d = 0; d < bpp; ++d) {
+				image_out[y*line_stride+x*bpp+d]=image_rgb_out[y*w+x+d*w*h];
+			}
+		}
+	}
+
 }

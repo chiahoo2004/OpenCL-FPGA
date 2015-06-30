@@ -17,13 +17,16 @@ __kernel void bilateral(
 		x += r;
 		y += r;
 
+		int w = work_w + 2*r;
+		int h = work_h + 2*r;
+
 		float color_diff = 0;
 		float color_weight = 0;
 		float weight_sum = 0.0f;
 		float weight_pixel_sum[3] = {};
 
-		__global const float *base_in = &in[line_stride*y+bpp*x];
-		__global float *base_out = &out[line_stride*y+bpp*x];
+		__global const float *base_in = &in[w*y+x];
+		__global float *base_out = &out[w*y+x];
 		
 
 		for (int dy = -r; dy <= r; dy++) {
@@ -32,7 +35,7 @@ __kernel void bilateral(
 				int range_ydiff = abs(dy);
 				for (int d = 0; d < bpp; ++d)
 				{
-					float diff = base_in[d+dx*bpp+dy*line_stride]-base_in[d];
+					float diff = base_in[d*w*h+dx+dy*w]-base_in[d*w*h];
 					color_diff += diff * diff;
 				}
 
@@ -45,7 +48,7 @@ __kernel void bilateral(
 
 				weight_sum += weight;
 				for (int d = 0; d < bpp; ++d) {
-					weight_pixel_sum[d] += weight * base_in[d+dy*line_stride+dx*bpp];
+					weight_pixel_sum[d] += weight * base_in[d*w*h+dy*w+dx];
 				}
 				
 			}
@@ -53,7 +56,7 @@ __kernel void bilateral(
 
 		for (int d = 0; d < bpp; ++d) {
 			const int output_pixel = weight_pixel_sum[d] / weight_sum + 0.5f;
-			base_out[d] = (output_pixel&0xffffff00)? ~(output_pixel>>24): output_pixel;
+			base_out[d*w*h] = (output_pixel&0xffffff00)? ~(output_pixel>>24): output_pixel;
 		}
 	}
 }
