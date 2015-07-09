@@ -30,6 +30,8 @@ void BilateralFilter::Run_cxx(const float *image_in, float *image_out)
 	CHECK_NE(h, 0) << "Height might not be 0";
 	
 	const int line_stride = bpp*w;
+	auto range_gaussian_table = GenerateGaussianTable(spacial_sigma, radius+1);
+	auto color_gaussian_table = GenerateGaussianTable(color_sigma, 256);
 
 	unique_ptr<float[]> image_rgb_in(new float[w*h*bpp]);
 	unique_ptr<float[]> image_rgb_out(new float[w*h*bpp]);
@@ -40,7 +42,7 @@ void BilateralFilter::Run_cxx(const float *image_in, float *image_out)
 			}
 		}
 	}
-
+/*
 	unique_ptr<float[]> weight_pixel_sum(new float[bpp]);
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = offset; x < w-offset; ++x) {
@@ -70,6 +72,57 @@ void BilateralFilter::Run_cxx(const float *image_in, float *image_out)
 			}
 		}
 	}
+*/
+
+	for (int y = offset; y < h-offset; ++y) {
+		for (int x = offset; x < w-offset; ++x) {
+
+			float color_diff = 0;
+			float color_weight = 0;
+			float weight_sum = 0.0f;
+			float weight_pixel_sum[3] = {};
+
+			const float *base_in = &image_rgb_in[w*y+x];
+			float *base_out = &image_rgb_out[w*y+x];
+			
+
+			for (int dy = -radius; dy <= radius; dy++) {
+				for (int dx = -radius; dx <= radius; dx++) {
+					int range_xdiff = abs(dx);
+					int range_ydiff = abs(dy);
+					for (int d = 0; d < bpp; ++d)
+					{
+						float diff = base_in[d*w*h+dx+dy*w]-base_in[d*w*h];
+						color_diff += diff * diff;
+					}
+
+					const float denominator_inverse = -1.0f / (2.0f * color_sigma * color_sigma);
+					color_weight = exp(color_diff*denominator_inverse);
+					float weight =
+						color_weight
+						* range_gaussian_table[range_xdiff]
+						* range_gaussian_table[range_ydiff];
+
+					weight_sum += weight;
+					for (int d = 0; d < bpp; ++d) {
+						weight_pixel_sum[d] += weight * base_in[d*w*h+dy*w+dx];
+					}
+					
+				}
+			}
+
+			for (int d = 0; d < bpp; ++d) {
+				const int output_pixel = weight_pixel_sum[d] / weight_sum + 0.5f;
+				base_out[d*w*h] = (output_pixel&0xffffff00)? ~(output_pixel>>24): output_pixel;
+			}
+		}
+	}
+
+
+
+
+
+
 
 	for (int y = 0; y < h; ++y) {
 		for (int x = 0; x < w; ++x) {

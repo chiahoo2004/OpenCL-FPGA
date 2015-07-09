@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 	CHECK_EQ(argc, 3) << "Usage: <executable> <input> <output>";
 	ilInit();
 	LOG(INFO) << "Using devil library version " << ilGetInteger(IL_VERSION_NUM);
-	InitOpenCL(0);
+	InitOpenCL(1);
 
 	// Allocate images
 	ILuint image;
@@ -87,19 +87,19 @@ int main(int argc, char** argv)
 	switch (filter_method) {
 		case FilterMethod::Gaussian: {
 			GaussianFilter *gf = new GaussianFilter;
-			gf->SetParameter({10.0f, 1});
+			gf->SetParameter({10.0f, 10});
 			filter = dynamic_cast<Filter*>(gf);
 			break;
 		}
 		case FilterMethod::Bilateral: {
 			BilateralFilter *bf = new BilateralFilter;
-			bf->SetParameter({30.0f, 30.0f, 5});
+			bf->SetParameter({30.0f, 30.0f, 10});
 			filter = dynamic_cast<Filter*>(bf);
 			break;
 		}
 		case FilterMethod::Guided: {
 			GuidedFilter *gf = new GuidedFilter;
-			gf->SetParameter({500.0f, 1});
+			gf->SetParameter({500.0f, 10});
 			filter = dynamic_cast<Filter*>(gf);
 			break;
 		}
@@ -122,20 +122,20 @@ int main(int argc, char** argv)
 //	device_manager->GetKernel("guided.cl", "guided");
 //	device_manager->GetKernel("guidedtwo.cl", "guidedtwo");
 	tic = GetNow();
-//	filter->Run_ocl(original_float.get(), enhanced_float.get());
+	filter->Run_ocl(original_float.get(), enhanced_float.get());
 	toc = GetNow();
 	elapsed_ocl = DiffUsInLongLong(tic, toc);
 
 	LOG(INFO) << "Without OpenCL: " << elapsed_cxx << "us";
 	LOG(INFO) << "With OpenCL: " << elapsed_ocl << "us";
 	LOG(INFO) << "Speedup: " << elapsed_cxx/float(elapsed_ocl) << "x";
-/*
+
 	tic = GetNow();
 	float weights[] = {2.0f, 2.0f};
-	Enhance(original_float.get(), enhanced_float.get(), weights, w, h, bpp, sizeof(weights)/sizeof(float), filter);
+//	Enhance(original_float.get(), enhanced_float.get(), weights, w, h, bpp, sizeof(weights)/sizeof(float), filter);
 	toc = GetNow();
 	LOG(INFO) << "Time elapsed: " << DiffUsInLongLong(tic, toc) << "us";
-*/
+
 	// Store enhanced image
 	transform(enhanced_float.get(), enhanced_float.get()+image_size, color_img_ptr, [](const float x)->ILubyte {
 		return ClampToUint8<int>(x);

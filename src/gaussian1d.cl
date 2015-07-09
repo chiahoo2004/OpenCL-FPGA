@@ -30,7 +30,7 @@ __kernel void gaussian1d(
 			}
 
 			const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
-			out[x*w+y+d*w*h] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
+			out[x*h+y+d*w*h] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
 		}
 	}
 }

@@ -50,13 +50,13 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 				}
 
 				const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
-				mid[x*w+y+d*w*h] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
+				mid[x*h+y+d*w*h] = ((int)mid_output&0xffffff00)? ~((int)mid_output>>24): (int)mid_output;
 			}
 		}
 	}
 	
-	for (int y = radius; y < h-radius; ++y) {
-		for (int x = radius; x < w-radius; ++x) {
+	for (int y = radius; y < w-radius; ++y) {
+		for (int x = radius; x < h-radius; ++x) {
 			for (int d = 0; d < bpp; ++d) {
 				float weight_sum = 0.0f;
 				float weight_pixel_sum = 0.0f;
@@ -64,7 +64,7 @@ void GaussianFilter::Run_cxx(const float *image_in, float* image_out)
 				for (int i = -radius; i <= radius; ++i) {
 					int range_diff = abs(i);
 					weight_sum += range_gaussian_table[range_diff];
-					weight_pixel_sum += range_gaussian_table[range_diff] * mid[(y)*w+(x+i)+d*w*h];
+					weight_pixel_sum += range_gaussian_table[range_diff] * mid[(y)*h+(x+i)+d*w*h];
 				}
 
 				const int mid_output = weight_pixel_sum/weight_sum + 0.5f;
@@ -123,7 +123,7 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 	const int work_w = w-2*r;
 	const int work_h = h-2*r;
 	const size_t block_dim[2] = {32, 16};
-	const size_t grid_dim[2] = {CeilDiv(work_w, 32)*32, CeilDiv(work_h, 16)*16};
+	size_t grid_dim[2] = {CeilDiv(work_w, 32)*32, CeilDiv(work_h, 16)*16};
 
 	device_manager->Call(
 		kernel,
@@ -143,14 +143,17 @@ void GaussianFilter::Run_ocl(const float *image_in, float* image_out)
 	float* mid = new float[w*h*bpp];
 	device_manager->ReadMemory(mid, *d_mid.get(), w*h*bpp*sizeof(float));
 
+	grid_dim[0] = CeilDiv(work_h, 32)*32; 
+	grid_dim[1] = CeilDiv(work_w, 16)*16;
+
 	device_manager->Call(
 		kernel,
 		{
 			{d_mid.get(), sizeof(cl_mem)},
 			{d_out.get(), sizeof(cl_mem)},
 			{&r, sizeof(int)},
-			{&work_w, sizeof(int)},
 			{&work_h, sizeof(int)},
+			{&work_w, sizeof(int)},
 			{&bpp, sizeof(int)},
 			{&line_stride, sizeof(int)},
 			{d_range_gaussian_table.get(), sizeof(cl_mem)}
