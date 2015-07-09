@@ -42,37 +42,6 @@ void BilateralFilter::Run_cxx(const float *image_in, float *image_out)
 			}
 		}
 	}
-/*
-	unique_ptr<float[]> weight_pixel_sum(new float[bpp]);
-	for (int y = offset; y < h-offset; ++y) {
-		for (int x = offset; x < w-offset; ++x) {
-			float weight_sum = 0.0f;
-			const float *cur_in = image_rgb_in.get()+y*w+x;
-			float *cur_out = image_rgb_out.get()+y*w+x;
-			for (int dy = -offset; dy <= offset; dy++) {
-				for(int dx = -offset; dx <= offset; dx++) {
-					const float *neighbor_in = cur_in+dy*w+dx;
-					float spatial = exp( (dx*dx+dy*dy) * spacial_sigma_inverse);
-					float range_diff = 0;
-					for (int d = 0; d < bpp; ++d) {
-						float diff_1d = cur_in[d*w*h] - neighbor_in[d*w*h];
-						range_diff += diff_1d * diff_1d;
-					}
-					float range = exp(range_diff * color_sigma_inverse);
-					float weight = range * spatial;
-					weight_sum += weight;
-					for (int d = 0; d < bpp; ++d) {
-						weight_pixel_sum[d] += weight * neighbor_in[d*w*h];
-					}
-				}
-			}
-			for (int d = 0; d < bpp; ++d) {
-				cur_out[d*w*h] = ClampToUint8((int)(weight_pixel_sum[d] / weight_sum + 0.5f));
-				weight_pixel_sum[d] = 0;
-			}
-		}
-	}
-*/
 
 	for (int y = offset; y < h-offset; ++y) {
 		for (int x = offset; x < w-offset; ++x) {
@@ -117,12 +86,6 @@ void BilateralFilter::Run_cxx(const float *image_in, float *image_out)
 			}
 		}
 	}
-
-
-
-
-
-
 
 	for (int y = 0; y < h; ++y) {
 		for (int x = 0; x < w; ++x) {
